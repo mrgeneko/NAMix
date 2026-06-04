@@ -325,6 +325,14 @@ void GatewayAudioProcessor::applyDsp(juce::AudioBuffer<float>& buffer)
   for (int i = 0; i < numSamples; ++i)
     floatOut[i] = static_cast<float>(finalBuf[i]) * outputGainLinear;
 
+  // Update output level for the UI meter.
+  {
+    float peak = 0.0f;
+    for (int i = 0; i < numSamples; ++i)
+      peak = std::max(peak, std::abs(floatOut[i]));
+    mOutputLevel.store(peak, std::memory_order_relaxed);
+  }
+
   // 8. Copy mono channel 0 → all output channels (stereo).
   for (int ch = 1; ch < buffer.getNumChannels(); ++ch)
     buffer.copyFrom(ch, 0, buffer, 0, 0, numSamples);

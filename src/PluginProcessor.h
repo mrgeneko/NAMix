@@ -70,8 +70,9 @@ public:
   bool loadIR(const juce::File& file);
   void clearIR();
 
-  juce::String getModelPath() const { return mModelPath; }
-  juce::String getIRPath()    const { return mIRPath; }
+  juce::String getModelPath()  const { return mModelPath; }
+  juce::String getIRPath()     const { return mIRPath; }
+  float        getOutputLevel() const { return mOutputLevel.load(std::memory_order_relaxed); }
 
   juce::AudioProcessorValueTreeState apvts;
 
@@ -105,6 +106,10 @@ private:
   std::vector<DSP_SAMPLE> mWorkBufOutput;
   DSP_SAMPLE* mWorkPtrInput  = nullptr;
   DSP_SAMPLE* mWorkPtrOutput = nullptr;
+
+  // Output peak level (linear) for the UI meter — written by audio thread,
+  // read by the message thread. Relaxed ordering is fine for a display value.
+  std::atomic<float> mOutputLevel { 0.0f };
 
   // Persisted file paths — stored in plugin state so DAW projects can reload.
   juce::String mModelPath;
