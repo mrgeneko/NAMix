@@ -1,4 +1,10 @@
-// From https://github.com/Dougal-s/Aether
+/*
+ * architecture.hpp — from the Aether project by Dougal-s
+ * https://github.com/Dougal-s/Aether
+ *
+ * Bundled via NeuralAmpModelerPlugin by Steven Atkinson (MIT Licence).
+ * See NOTICE for full attribution.
+ */
 
 #ifndef ARCHITECTURE_HPP
 #define ARCHITECTURE_HPP

@@ -76,6 +76,7 @@ public:
 
   juce::String getModelPath()  const { return mModelPath; }
   juce::String getIRPath()     const { return mIRPath; }
+  float        getInputLevel()  const { return mInputLevel.load(std::memory_order_relaxed); }
   float        getOutputLevel() const { return mOutputLevel.load(std::memory_order_relaxed); }
 
   juce::AudioProcessorValueTreeState apvts;
@@ -111,8 +112,9 @@ private:
   DSP_SAMPLE* mWorkPtrInput  = nullptr;
   DSP_SAMPLE* mWorkPtrOutput = nullptr;
 
-  // Output peak level (linear) for the UI meter — written by audio thread,
-  // read by the message thread. Relaxed ordering is fine for a display value.
+  // Input/output peak levels (linear) for the UI meters — written by audio
+  // thread, read by the message thread. Relaxed ordering is fine here.
+  std::atomic<float> mInputLevel  { 0.0f };
   std::atomic<float> mOutputLevel { 0.0f };
 
   // Slim parameter dirty flag: set by parameterChanged (message thread),

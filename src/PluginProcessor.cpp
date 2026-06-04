@@ -276,6 +276,14 @@ void GatewayAudioProcessor::applyDsp(juce::AudioBuffer<float>& buffer)
 
   const float* floatIn = buffer.getReadPointer(0);
 
+  // Measure raw input peak (before any gain) for the input level meter.
+  {
+    float peak = 0.0f;
+    for (int i = 0; i < numSamples; ++i)
+      peak = std::max(peak, std::abs(floatIn[i]));
+    mInputLevel.store(peak, std::memory_order_relaxed);
+  }
+
   // 1. Convert float → double, apply input gain → mWorkBufInput.
   for (int i = 0; i < numSamples; ++i)
     mWorkBufInput[static_cast<size_t>(i)] =

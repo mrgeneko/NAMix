@@ -51,8 +51,10 @@ namespace Layout
   static constexpr int SLIM_X   = ROW_X + ROW_W + 6;  // 506
   static constexpr int SLIM_W   = 56;                  // 2*28px
 
-  // Output meter — outside contentArea on the right
-  // contentArea.GetFromRight(30).GetHShifted(20).GetMidVPadded(100).VShifted(-25)
+  // Meters — outside contentArea, symmetric on left and right.
+  // Input:  contentArea.GetFromLeft(30).GetHShifted(-20).GetMidVPadded(100).GetVShifted(-25)
+  // Output: contentArea.GetFromRight(30).GetHShifted(20).GetMidVPadded(100).GetVShifted(-25)
+  static constexpr int METER_INPUT_X = 10;
   static constexpr int METER_X  = 560;
   static constexpr int METER_Y  = 75;
   static constexpr int METER_W  = 30;
@@ -188,6 +190,7 @@ GatewayAudioProcessorEditor::GatewayAudioProcessorEditor(GatewayAudioProcessor& 
   }
   addAndMakeVisible(mIRRow);
 
+  addAndMakeVisible(mInputLevelMeter);
   addAndMakeVisible(mLevelMeter);
 
   startTimerHz(30);
@@ -201,6 +204,7 @@ GatewayAudioProcessorEditor::~GatewayAudioProcessorEditor()
 
 void GatewayAudioProcessorEditor::timerCallback()
 {
+  mInputLevelMeter.setLevel(mProcessor.getInputLevel());
   mLevelMeter.setLevel(mProcessor.getOutputLevel());
 }
 
@@ -258,7 +262,10 @@ void GatewayAudioProcessorEditor::paint(juce::Graphics& g)
 
 void GatewayAudioProcessorEditor::resized()
 {
-  // Meter — outside contentArea on the right (matches outputMeterArea)
+  // Input meter — outside contentArea on the left (matches inputMeterArea)
+  mInputLevelMeter.setBounds(Layout::METER_INPUT_X, Layout::METER_Y,
+                             Layout::METER_W, Layout::METER_H);
+  // Output meter — outside contentArea on the right (matches outputMeterArea)
   mLevelMeter.setBounds(Layout::METER_X, Layout::METER_Y,
                         Layout::METER_W, Layout::METER_H);
 

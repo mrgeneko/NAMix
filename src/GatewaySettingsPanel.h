@@ -2,6 +2,9 @@
  * Gateway Linux VST3 Plugin
  * Copyright (C) 2026 rations
  *
+ * Based on NeuralAmpModelerPlugin by Steven Atkinson (MIT Licence).
+ * See NOTICE for full attribution.
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, version 3.
@@ -10,6 +13,7 @@
 #pragma once
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
+#include <BinaryData.h>
 
 // Full-size overlay panel shown when the gear icon is clicked.
 // Colours and layout match the original NAMSettingsPageControl.
@@ -21,6 +25,13 @@ public:
   explicit GatewaySettingsPanel(juce::AudioProcessorValueTreeState& apvts)
     : mApvts(apvts)
   {
+    auto michromaTypeface = juce::Typeface::createSystemTypefaceFor(
+      BinaryData::MichromaRegular_ttf, BinaryData::MichromaRegular_ttfSize);
+    mMichromaFont = juce::Font(michromaTypeface).withHeight(22.0f);
+
+    auto robotoTypeface = juce::Typeface::createSystemTypefaceFor(
+      BinaryData::RobotoRegular_ttf, BinaryData::RobotoRegular_ttfSize);
+    mRobotoFont = juce::Font(robotoTypeface).withHeight(13.0f);
     mCloseButton.setButtonText(juce::String(juce::CharPointer_UTF8("\xc3\x97")));
     mCloseButton.onClick = [this] { if (onClose) onClose(); };
     addAndMakeVisible(mCloseButton);
@@ -60,13 +71,13 @@ public:
     g.setColour(juce::Colour(0xff252230));
     g.fillRect(0, 0, getWidth(), 50);
 
-    // Title — Michroma-Regular 22px (original uses 30px; scaled for our panel)
+    // Title — Michroma-Regular 22px
     g.setColour(juce::Colour(0xfff2f2f2));
-    g.setFont(juce::Font("Michroma-Regular", 22.0f, juce::Font::plain));
+    g.setFont(mMichromaFont);
     g.drawText("SETTINGS", 0, 0, getWidth(), 50, juce::Justification::centred);
 
-    // Section headers — Roboto, Cadet Blue
-    g.setFont(juce::Font("Roboto-Regular", 11.0f, juce::Font::plain));
+    // Section headers — Roboto 11px, Cadet Blue
+    g.setFont(mRobotoFont.withHeight(11.0f));
     g.setColour(juce::Colour(0xffa2b2bf).withAlpha(0.7f));
     g.drawText("OUTPUT MODE", 40, 65, 200, 13, juce::Justification::centredLeft);
 
@@ -74,16 +85,16 @@ public:
     g.setColour(juce::Colours::white.withAlpha(0.08f));
     g.drawHorizontalLine(132, 30.0f, (float)(getWidth() - 30));
 
-    g.setFont(juce::Font("Roboto-Regular", 11.0f, juce::Font::plain));
+    g.setFont(mRobotoFont.withHeight(11.0f));
     g.setColour(juce::Colour(0xffa2b2bf).withAlpha(0.7f));
     g.drawText("ABOUT", 40, 148, 200, 13, juce::Justification::centredLeft);
 
-    g.setFont(juce::Font("Roboto-Regular", 11.0f, juce::Font::plain));
+    g.setFont(mRobotoFont.withHeight(13.0f));
     g.setColour(juce::Colour(0xfff2f2f2).withAlpha(0.5f));
     g.drawText("Gateway v0.1  \xe2\x80\x94  GPL v3",
-               40, 168, getWidth() - 80, 14, juce::Justification::centredLeft);
+               40, 168, getWidth() - 80, 16, juce::Justification::centredLeft);
     g.drawText("Based on NeuralAmpModelerPlugin by Steven Atkinson (MIT)",
-               40, 186, getWidth() - 80, 14, juce::Justification::centredLeft);
+               40, 188, getWidth() - 80, 16, juce::Justification::centredLeft);
   }
 
   void resized() override
@@ -106,6 +117,8 @@ private:
   }
 
   juce::AudioProcessorValueTreeState& mApvts;
+  juce::Font         mMichromaFont;
+  juce::Font         mRobotoFont;
   juce::TextButton   mCloseButton;
   juce::ToggleButton mOutputButtons[3];
 };

@@ -66,7 +66,7 @@ juce_add_binary_data(GatewayBinaryData SOURCES
 # Plugin definition
 # ---------------------------------------------------------------------------
 juce_add_plugin(GatewayLinux
-    COMPANY_NAME               "Gateway"
+    COMPANY_NAME               "Steven Atkinson"
     PLUGIN_MANUFACTURER_CODE   GwLx
     PLUGIN_CODE                Gwlx
     FORMATS                    VST3

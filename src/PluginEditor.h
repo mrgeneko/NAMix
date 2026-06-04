@@ -48,6 +48,9 @@ private:
   // File loading rows
   FileRow    mModelRow { "Select model..." };
   FileRow    mIRRow    { "Select IR..." };
+
+  // Level meters — input on the left, output on the right (matches original)
+  LevelMeter mInputLevelMeter;
   LevelMeter mLevelMeter;
 
   // Slim slider (next to NAM model row, matches original slimIconArea)
