@@ -65,24 +65,30 @@ public:
   {
     const auto b = getLocalBounds().toFloat();
 
-    // Track
-    g.setColour(juce::Colour(0xff1e1e36));
+    // Track background — dark, close to NAM_1
+    g.setColour(juce::Colour(0xff131116));
     g.fillRect(b);
 
-    // Level fill from bottom
+    // Level fill from bottom — Azure (NAM_THEMECOLOR)
     if (mLevel > 0.0f)
     {
       const float h = b.getHeight() * std::min(mLevel, 1.0f);
-      g.setColour(juce::Colour(0xff4a90d9));
+      g.setColour(juce::Colour(0xff5085e8));
       g.fillRect(b.getX(), b.getBottom() - h, b.getWidth(), h);
     }
 
-    // Peak hold tick
+    // Peak hold tick — brighter Azure (kX3 = THEMECOLOR.WithContrast(0.1))
     if (mPeak > 0.001f)
     {
       const float py = b.getBottom() - b.getHeight() * std::min(mPeak, 1.0f);
-      g.setColour(juce::Colour(0xff7ab8ff));
+      g.setColour(juce::Colour(0xff6a9ff0));
       g.fillRect(b.getX(), py - 1.0f, b.getWidth(), 2.0f);
+
+      // Grid lines (NAM draws grid on meter)
+      g.setColour(juce::Colours::black.withAlpha(0.3f));
+      const float gridStep = b.getHeight() / 7.0f;
+      for (int i = 1; i < 7; ++i)
+        g.fillRect(b.getX(), b.getY() + i * gridStep - 0.5f, b.getWidth(), 1.0f);
     }
   }
 

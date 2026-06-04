@@ -50,8 +50,9 @@ public:
     addAndMakeVisible(mClearButton);
 
     mFilenameLabel.setText(placeholder, juce::dontSendNotification);
-    mFilenameLabel.setJustificationType(juce::Justification::centredLeft);
-    mFilenameLabel.setColour(juce::Label::textColourId, juce::Colour(0xff666688));
+    mFilenameLabel.setJustificationType(juce::Justification::centred);
+    mFilenameLabel.setColour(juce::Label::textColourId,
+                             juce::Colour(0xffa2b2bf).withAlpha(0.7f)); // NAM_3 dimmed
     mFilenameLabel.setInterceptsMouseClicks(false, false);
     addAndMakeVisible(mFilenameLabel);
   }
@@ -68,7 +69,8 @@ public:
     if (mCurrentIndex < 0 && !mFiles.isEmpty())
       mCurrentIndex = 0;
     mFilenameLabel.setText(f.getFileName(), juce::dontSendNotification);
-    mFilenameLabel.setColour(juce::Label::textColourId, juce::Colours::white);
+    mFilenameLabel.setColour(juce::Label::textColourId,
+                             juce::Colour(0xfff2f2f2)); // NAM_THEMEFONTCOLOR
   }
 
   // Resets all state — called by the editor after clearing the file.
@@ -79,19 +81,23 @@ public:
     mFiles.clear();
     mCurrentIndex = -1;
     mFilenameLabel.setText(mPlaceholder, juce::dontSendNotification);
-    mFilenameLabel.setColour(juce::Label::textColourId, juce::Colour(0xff666688));
+    mFilenameLabel.setColour(juce::Label::textColourId,
+                             juce::Colour(0xffa2b2bf).withAlpha(0.7f));
   }
 
   void paint(juce::Graphics& g) override
   {
-    g.fillAll(juce::Colour(0xff141428));
+    // File row background — slightly lighter than NAM_1 main background,
+    // matching the fileBackgroundBitmap tint in the original.
+    g.fillAll(juce::Colour(0xff1a1720));
 
     // Folder icon centred in the load button area
     const auto lb = mLoadButton.getBounds().toFloat();
     const float cx = lb.getCentreX();
     const float cy = lb.getCentreY();
     constexpr float iw = 14.0f, ih = 11.0f;
-    g.setColour(juce::Colour(0xffaaaacc));
+    // Cadet Blue — matches NAM's dimmed icon colour
+    g.setColour(juce::Colour(0xffa2b2bf).withAlpha(0.75f));
     juce::Path folder;
     folder.addRectangle(cx - iw * 0.5f, cy - ih * 0.5f + 2.5f, iw, ih - 2.5f);
     folder.addRectangle(cx - iw * 0.5f, cy - ih * 0.5f,         iw * 0.44f, 3.5f);

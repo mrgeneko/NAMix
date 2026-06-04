@@ -12,7 +12,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 
 // Full-size overlay panel shown when the gear icon is clicked.
-// Provides output mode selection (Raw / Normalized / Calibrated) and about info.
+// Colours and layout match the original NAMSettingsPageControl.
 class GatewaySettingsPanel : public juce::Component
 {
 public:
@@ -30,7 +30,7 @@ public:
     {
       mOutputButtons[i].setButtonText(labels[i]);
       mOutputButtons[i].setRadioGroupId(101, juce::dontSendNotification);
-      const int idx = i; // capture by value
+      const int idx = i;
       mOutputButtons[i].onClick = [this, idx] { setOutputMode(idx); };
       addAndMakeVisible(mOutputButtons[i]);
     }
@@ -38,7 +38,6 @@ public:
     refreshFromState();
   }
 
-  // Sync radio buttons from the current APVTS parameter value.
   void refreshFromState()
   {
     const int mode = static_cast<int>(
@@ -54,57 +53,54 @@ public:
 
   void paint(juce::Graphics& g) override
   {
-    // Opaque background so main UI is fully hidden
-    g.fillAll(juce::Colour(0xff1a1a2e));
+    // Opaque NAM_1 background
+    g.fillAll(juce::Colour(0xff1d1a1f));
 
     // Title bar
-    g.setColour(juce::Colour(0xff1f1f38));
-    g.fillRect(0, 0, getWidth(), 40);
+    g.setColour(juce::Colour(0xff252230));
+    g.fillRect(0, 0, getWidth(), 50);
 
-    g.setColour(juce::Colours::white);
-    g.setFont(juce::Font(16.0f, juce::Font::bold));
-    g.drawText("SETTINGS", 0, 0, getWidth(), 40, juce::Justification::centred);
+    // Title — Michroma-Regular 22px (original uses 30px; scaled for our panel)
+    g.setColour(juce::Colour(0xfff2f2f2));
+    g.setFont(juce::Font("Michroma-Regular", 22.0f, juce::Font::plain));
+    g.drawText("SETTINGS", 0, 0, getWidth(), 50, juce::Justification::centred);
 
-    // Output mode section header
-    g.setFont(juce::Font(10.5f));
-    g.setColour(juce::Colours::white.withAlpha(0.55f));
-    g.drawText("OUTPUT MODE", 40, 54, 200, 13, juce::Justification::centredLeft);
+    // Section headers — Roboto, Cadet Blue
+    g.setFont(juce::Font("Roboto-Regular", 11.0f, juce::Font::plain));
+    g.setColour(juce::Colour(0xffa2b2bf).withAlpha(0.7f));
+    g.drawText("OUTPUT MODE", 40, 65, 200, 13, juce::Justification::centredLeft);
 
-    // Divider below output mode
+    // Divider
     g.setColour(juce::Colours::white.withAlpha(0.08f));
-    g.drawHorizontalLine(122, 30.0f, (float)(getWidth() - 30));
+    g.drawHorizontalLine(132, 30.0f, (float)(getWidth() - 30));
 
-    // About header
-    g.setFont(juce::Font(10.5f));
-    g.setColour(juce::Colours::white.withAlpha(0.55f));
-    g.drawText("ABOUT", 40, 134, 200, 13, juce::Justification::centredLeft);
+    g.setFont(juce::Font("Roboto-Regular", 11.0f, juce::Font::plain));
+    g.setColour(juce::Colour(0xffa2b2bf).withAlpha(0.7f));
+    g.drawText("ABOUT", 40, 148, 200, 13, juce::Justification::centredLeft);
 
-    // About body
-    g.setFont(juce::Font(10.5f));
-    g.setColour(juce::Colours::white.withAlpha(0.45f));
+    g.setFont(juce::Font("Roboto-Regular", 11.0f, juce::Font::plain));
+    g.setColour(juce::Colour(0xfff2f2f2).withAlpha(0.5f));
     g.drawText("Gateway v0.1  \xe2\x80\x94  GPL v3",
-               40, 154, getWidth() - 80, 14, juce::Justification::centredLeft);
-    g.drawText("Based on NeuralAmpModelerPlugin by Steven Atkinson  (MIT)",
-               40, 170, getWidth() - 80, 14, juce::Justification::centredLeft);
+               40, 168, getWidth() - 80, 14, juce::Justification::centredLeft);
+    g.drawText("Based on NeuralAmpModelerPlugin by Steven Atkinson (MIT)",
+               40, 186, getWidth() - 80, 14, juce::Justification::centredLeft);
   }
 
   void resized() override
   {
-    // Close button top-right
-    mCloseButton.setBounds(getWidth() - 32, 8, 24, 24);
+    mCloseButton.setBounds(getWidth() - 36, 13, 24, 24);
 
-    // Output mode radio buttons in a row
-    const int btnY = 70;
-    const int btnH = 36;
-    mOutputButtons[0].setBounds(40,  btnY, 80,  btnH);
-    mOutputButtons[1].setBounds(150, btnY, 120, btnH);
-    mOutputButtons[2].setBounds(300, btnY, 120, btnH);
+    // Three radio buttons in a row beneath "OUTPUT MODE"
+    const int btnY = 80;
+    const int btnH = 40;
+    mOutputButtons[0].setBounds(40,  btnY,  80, btnH);
+    mOutputButtons[1].setBounds(150, btnY, 130, btnH);
+    mOutputButtons[2].setBounds(310, btnY, 130, btnH);
   }
 
 private:
   void setOutputMode(int index)
   {
-    // AudioParameterChoice normalized value: index / (numChoices - 1)
     if (auto* param = mApvts.getParameter("outputMode"))
       param->setValueNotifyingHost((float)index / 2.0f);
   }

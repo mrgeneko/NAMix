@@ -54,6 +54,15 @@ target_include_directories(NamDsp PUBLIC
 target_compile_options(NamDsp PRIVATE -ffast-math -Wno-unused-parameter -fPIC)
 
 # ---------------------------------------------------------------------------
+# Embedded font resources (Michroma-Regular and Roboto-Regular, copied from
+# the original NeuralAmpModelerPlugin resources under MIT licence).
+# ---------------------------------------------------------------------------
+juce_add_binary_data(GatewayBinaryData SOURCES
+    resources/fonts/Michroma-Regular.ttf
+    resources/fonts/Roboto-Regular.ttf
+)
+
+# ---------------------------------------------------------------------------
 # Plugin definition
 # ---------------------------------------------------------------------------
 juce_add_plugin(GatewayLinux
@@ -110,6 +119,7 @@ target_link_libraries(GatewayLinux
         # .so, so that static-initialiser registrations (WaveNet, LSTM, etc.)
         # always execute at plugin load time regardless of LTO / --as-needed.
         -Wl,--whole-archive NamDsp -Wl,--no-whole-archive
+        GatewayBinaryData
         juce::juce_audio_utils
         juce::juce_opengl
         stdc++fs

@@ -12,19 +12,93 @@
 
 #include "PluginEditor.h"
 
+// ============================================================
+// Layout constants — exact pixel values from NeuralAmpModeler
+// PLUG_WIDTH=600, PLUG_HEIGHT=400
+// mainArea   = 20px padding → (20,20,560,360)
+// contentArea = another 10px → (30,30,540,340)
+// titleHeight = 50
+// NAM_KNOB_HEIGHT = 120
+// knobsPad = 20 (from each side within contentArea)
+// knobsExtraSpaceBelowTitle = 25
+// fileWidth = 200 (row = 2*200 = 400px, centred in 540)
+// fileHeight = 30
+// irYOffset = 38
+// ============================================================
+namespace Layout
+{
+  // contentArea origin and size
+  static constexpr int CL = 30, CT = 30, CW = 540, CH = 340;
+
+  // Knobs
+  static constexpr int KNOB_Y   = CT + 50 + 25; // titleHeight + extraSpace = 105
+  static constexpr int KNOB_H   = 120;           // NAM_KNOB_HEIGHT
+  static constexpr int KNOB_AX  = CL + 20;       // knobsPad = 50
+  static constexpr int KNOB_AW  = CW - 40;       // 500
+
+  // Toggle strip — below respective knob, reduced 10px from top
+  static constexpr int TOGGLE_Y = KNOB_Y + KNOB_H + 10; // 235
+  static constexpr int TOGGLE_H = 50;                    // NAM_SWITCH_HEIGHT
+
+  // File rows — centred 400px in contentArea, from bottom
+  static constexpr int ROW_W    = 400;
+  static constexpr int ROW_X    = CL + (CW - ROW_W) / 2; // 100
+  static constexpr int ROW_H    = 30;                     // fileHeight
+  static constexpr int MODEL_Y  = CT + CH - 2 * ROW_H - 1; // 309
+  static constexpr int IR_Y     = MODEL_Y + 38;             // 347 (irYOffset)
+
+  // Slim icon/slider — 6px right of model row
+  static constexpr int SLIM_X   = ROW_X + ROW_W + 6;  // 506
+  static constexpr int SLIM_W   = 56;                  // 2*28px
+
+  // Output meter — outside contentArea on the right
+  // contentArea.GetFromRight(30).GetHShifted(20).GetMidVPadded(100).VShifted(-25)
+  static constexpr int METER_X  = 560;
+  static constexpr int METER_Y  = 75;
+  static constexpr int METER_W  = 30;
+  static constexpr int METER_H  = 200;
+
+  // Settings button — mainArea corner 50×50 centred on 20×20
+  static constexpr int GEAR_X   = 545;
+  static constexpr int GEAR_Y   = 35;
+  static constexpr int GEAR_S   = 22;
+}
+
+// Helper: fractional grid cell across the knob area
+static juce::Rectangle<int> knobCell(int i)
+{
+  const float x0 = Layout::KNOB_AX + (float)i       * Layout::KNOB_AW / 6.0f;
+  const float x1 = Layout::KNOB_AX + (float)(i + 1) * Layout::KNOB_AW / 6.0f;
+  return { juce::roundToInt(x0), Layout::KNOB_Y,
+           juce::roundToInt(x1) - juce::roundToInt(x0), Layout::KNOB_H };
+}
+
+// ============================================================
+
 GatewayAudioProcessorEditor::GatewayAudioProcessorEditor(GatewayAudioProcessor& p)
   : AudioProcessorEditor(&p)
   , mProcessor(p)
   , mSettingsPanel(p.apvts)
 {
-  setLookAndFeel(&mLookAndFeel);
-  setSize(580, 320);
+  // Load embedded fonts (binary data from resources/fonts/)
+  {
+    auto michromaTypeface = juce::Typeface::createSystemTypefaceFor(
+      BinaryData::MichromaRegular_ttf, BinaryData::MichromaRegular_ttfSize);
+    mMichromaFont = juce::Font(michromaTypeface).withHeight(30.0f);
 
-  // --- Knobs ---
+    auto robotoTypeface = juce::Typeface::createSystemTypefaceFor(
+      BinaryData::RobotoRegular_ttf, BinaryData::RobotoRegular_ttfSize);
+    mRobotoFont = juce::Font(robotoTypeface).withHeight(17.0f);
+  }
+
+  setLookAndFeel(&mLookAndFeel);
+  setSize(600, 400); // exact original PLUG_WIDTH × PLUG_HEIGHT
+
+  // --- Knobs (labels use Roboto-Regular 17px = DEFAULT_TEXT_SIZE+3) ---
   setupKnob(mInputGainSlider,  mInputGainLabel,  "Input");
   setupKnob(mNoiseGateSlider,  mNoiseGateLabel,  "Threshold");
   setupKnob(mBassSlider,       mBassLabel,       "Bass");
-  setupKnob(mMiddleSlider,     mMiddleLabel,      "Middle");
+  setupKnob(mMiddleSlider,     mMiddleLabel,      "Mid");
   setupKnob(mTrebleSlider,     mTrebleLabel,     "Treble");
   setupKnob(mOutputGainSlider, mOutputGainLabel, "Output");
 
@@ -61,14 +135,14 @@ GatewayAudioProcessorEditor::GatewayAudioProcessorEditor(GatewayAudioProcessor& 
   // --- Slim slider ---
   mSlimSlider.setSliderStyle(juce::Slider::LinearHorizontal);
   mSlimSlider.setTextBoxStyle(juce::Slider::NoTextBox, true, 0, 0);
-  mSlimSlider.setTooltip("Model size (0=smallest, 1=largest). Applies to slimmable"
-                          " WaveNet models only.");
+  mSlimSlider.setTooltip("Model size (Slim). 0 = smallest/fastest, 1 = full quality."
+                          " Only applies to slimmable WaveNet models.");
   addAndMakeVisible(mSlimSlider);
   mSlimAttachment = std::make_unique<
     juce::AudioProcessorValueTreeState::SliderAttachment>(
     apvts, "slim", mSlimSlider);
 
-  // --- Gear / settings button ---
+  // --- Gear button (transparent, overlays drawn gear icon) ---
   mGearButton.setButtonText("");
   mGearButton.setTooltip("Settings");
   mGearButton.onClick = [this] {
@@ -76,9 +150,9 @@ GatewayAudioProcessorEditor::GatewayAudioProcessorEditor(GatewayAudioProcessor& 
   };
   addAndMakeVisible(mGearButton);
 
-  // --- Settings panel (full-size overlay, hidden by default) ---
+  // --- Settings overlay ---
   mSettingsPanel.onClose = [this] { mSettingsPanel.setVisible(false); };
-  addChildComponent(mSettingsPanel); // invisible until gear clicked
+  addChildComponent(mSettingsPanel);
 
   // --- Model file row ---
   mModelRow.onOpenChooser = [this] { chooseModelFile(); };
@@ -132,24 +206,26 @@ void GatewayAudioProcessorEditor::timerCallback()
 
 void GatewayAudioProcessorEditor::paint(juce::Graphics& g)
 {
-  g.fillAll(juce::Colour(0xff1a1a2e));
+  // NAM_1: Raisin Black
+  g.fillAll(juce::Colour(0xff1d1a1f));
 
-  // Title
-  g.setColour(juce::Colours::white);
-  g.setFont(juce::Font(20.0f, juce::Font::bold));
+  // Title — Michroma-Regular 30px, white, centred in contentArea.GetFromTop(50)
+  g.setColour(juce::Colour(0xfff2f2f2));
+  g.setFont(mMichromaFont.withHeight(30.0f));
   g.drawText("GATEWAY",
-             juce::Rectangle<int>(0, 0, getWidth() - 28, 32),
+             juce::Rectangle<int>(Layout::CL, Layout::CT, Layout::CW, 50),
              juce::Justification::centred);
 
-  // Gear icon drawn behind the transparent mGearButton
+  // Gear icon — drawn in the settingsButtonArea corner (centred in 22×22)
   {
-    const float gx     = getWidth() - 16.0f;
-    const float gy     = 16.0f;
-    const float outer  = 8.0f;
-    const float inner  = 5.0f;
-    const float holeR  = 2.5f;
-    const int   teeth  = 8;
-    g.setColour(juce::Colours::white.withAlpha(0.55f));
+    const float gx    = Layout::GEAR_X + Layout::GEAR_S * 0.5f;
+    const float gy    = Layout::GEAR_Y + Layout::GEAR_S * 0.5f;
+    const float outer = 8.0f;
+    const float inner = 5.0f;
+    const float holeR = 2.5f;
+    const int   teeth = 8;
+
+    g.setColour(juce::Colour(0xffa2b2bf).withAlpha(0.7f)); // Cadet Blue dimmed
 
     juce::Path gear;
     for (int i = 0; i < teeth; ++i)
@@ -169,75 +245,70 @@ void GatewayAudioProcessorEditor::paint(juce::Graphics& g)
     }
     gear.closeSubPath();
     g.fillPath(gear);
-    g.setColour(juce::Colour(0xff1a1a2e));
+    g.setColour(juce::Colour(0xff1d1a1f));
     g.fillEllipse(gx - holeR, gy - holeR, holeR * 2.0f, holeR * 2.0f);
   }
 
-  // Separator line above file rows
-  g.setColour(juce::Colours::white.withAlpha(0.08f));
-  g.drawHorizontalLine(184, 0.0f, static_cast<float>(getWidth() - 22));
+  // Subtle separator between toggles and file rows
+  g.setColour(juce::Colours::white.withAlpha(0.07f));
+  g.drawHorizontalLine(Layout::MODEL_Y - 10,
+                       (float)Layout::ROW_X,
+                       (float)(Layout::ROW_X + Layout::ROW_W + Layout::SLIM_W + 10));
 }
 
 void GatewayAudioProcessorEditor::resized()
 {
-  const int meterW   = 12;
-  const int meterGap = 6;
-  const int contentW = getWidth() - meterW - meterGap;
-  const int knobW    = contentW / 6;
-
-  // Meter strip
-  mLevelMeter.setBounds(contentW + meterGap, 32, meterW, getHeight() - 40);
+  // Meter — outside contentArea on the right (matches outputMeterArea)
+  mLevelMeter.setBounds(Layout::METER_X, Layout::METER_Y,
+                        Layout::METER_W, Layout::METER_H);
 
   // Gear button overlays the drawn gear icon
-  mGearButton.setBounds(getWidth() - 26, 4, 24, 24);
+  mGearButton.setBounds(Layout::GEAR_X, Layout::GEAR_Y,
+                        Layout::GEAR_S, Layout::GEAR_S);
 
-  // Settings panel covers full editor
+  // Settings panel: full-editor overlay
   mSettingsPanel.setBounds(getLocalBounds());
 
-  auto area = juce::Rectangle<int>(0, 0, contentW, getHeight());
-  area.removeFromTop(32); // title
-
-  // Knob area — smaller than before to reduce knob diameter
+  // Knobs — 6 equal cells across knobsArea (500px), labels at top (17px)
+  constexpr int labelH = 17; // Roboto-Regular at DEFAULT_TEXT_SIZE+3
+  for (int i = 0; i < 6; ++i)
   {
-    auto knobArea = area.removeFromTop(100);
-    auto placeKnob = [&](juce::Slider& s, juce::Label& l) {
-      auto cell = knobArea.removeFromLeft(knobW);
-      l.setBounds(cell.removeFromTop(16));
-      s.setBounds(cell);
-    };
-    placeKnob(mInputGainSlider,  mInputGainLabel);
-    placeKnob(mNoiseGateSlider,  mNoiseGateLabel);
-    placeKnob(mBassSlider,       mBassLabel);
-    placeKnob(mMiddleSlider,     mMiddleLabel);
-    placeKnob(mTrebleSlider,     mTrebleLabel);
-    placeKnob(mOutputGainSlider, mOutputGainLabel);
+    auto cell = knobCell(i);
+    juce::Label*  lbl = nullptr;
+    juce::Slider* sld = nullptr;
+    switch (i)
+    {
+      case 0: lbl = &mInputGainLabel;  sld = &mInputGainSlider;  break;
+      case 1: lbl = &mNoiseGateLabel;  sld = &mNoiseGateSlider;  break;
+      case 2: lbl = &mBassLabel;       sld = &mBassSlider;       break;
+      case 3: lbl = &mMiddleLabel;     sld = &mMiddleSlider;     break;
+      case 4: lbl = &mTrebleLabel;     sld = &mTrebleSlider;     break;
+      case 5: lbl = &mOutputGainLabel; sld = &mOutputGainSlider; break;
+    }
+    lbl->setBounds(cell.removeFromTop(labelH));
+    sld->setBounds(cell);
   }
 
-  area.removeFromTop(12); // gap between knobs and toggles
-
-  // Toggle strip — centred under Threshold (knob 1) and Middle (knob 3)
+  // Toggle strip — centred under NoiseGate (knob 1) and Mid (knob 3)
   {
-    auto toggleArea = area.removeFromTop(36);
-    const int ty = toggleArea.getY();
-    mNoiseGateButton.setBounds(knobW + (knobW - 90) / 2, ty, 90, 36);
-    mToneStackButton.setBounds(knobW * 3 + (knobW - 60) / 2, ty, 60, 36);
+    auto ngCell  = knobCell(1);
+    auto midCell = knobCell(3);
+    mNoiseGateButton.setBounds(ngCell.withY(Layout::TOGGLE_Y)
+                                     .withHeight(Layout::TOGGLE_H));
+    mToneStackButton.setBounds(midCell.withY(Layout::TOGGLE_Y)
+                                      .withHeight(Layout::TOGGLE_H));
   }
 
-  area.removeFromTop(8); // gap before file rows
+  // Model row — 400px centred, slim slider in the 56px gap to the right
+  mModelRow.setBounds(Layout::ROW_X, Layout::MODEL_Y,
+                      Layout::ROW_W, Layout::ROW_H);
+  mSlimSlider.setBounds(Layout::SLIM_X,
+                        Layout::MODEL_Y + Layout::ROW_H / 2 - 7,
+                        Layout::SLIM_W, 14);
 
-  // Model row + Slim slider
-  {
-    constexpr int slimW = 84;
-    const int modelY = area.getY();
-    mModelRow.setBounds(0, modelY, contentW - slimW - 4, 38);
-    mSlimSlider.setBounds(contentW - slimW, modelY + 8, slimW, 22);
-    area.removeFromTop(38);
-  }
-
-  area.removeFromTop(4);
-
-  // IR row
-  mIRRow.setBounds(area.removeFromTop(38));
+  // IR row — same width and x as model row
+  mIRRow.setBounds(Layout::ROW_X, Layout::IR_Y,
+                   Layout::ROW_W, Layout::ROW_H);
 }
 
 void GatewayAudioProcessorEditor::setupKnob(juce::Slider& slider,
@@ -246,12 +317,12 @@ void GatewayAudioProcessorEditor::setupKnob(juce::Slider& slider,
 {
   label.setText(name, juce::dontSendNotification);
   label.setJustificationType(juce::Justification::centred);
-  label.setFont(juce::Font(11.0f));
-  label.setColour(juce::Label::textColourId, juce::Colours::white);
+  label.setFont(mRobotoFont.withHeight(14.0f));
+  label.setColour(juce::Label::textColourId, juce::Colour(0xfff2f2f2));
   addAndMakeVisible(label);
 
   slider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
-  slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 16);
+  slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 70, 17);
   addAndMakeVisible(slider);
 }
 

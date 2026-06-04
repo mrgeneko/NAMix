@@ -14,6 +14,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
+#include <BinaryData.h>
 
 #include "PluginProcessor.h"
 #include "GatewayLookAndFeel.h"
@@ -40,12 +41,16 @@ private:
   GatewayAudioProcessor& mProcessor;
   GatewayLookAndFeel     mLookAndFeel;
 
+  // Fonts loaded from embedded binary data (Michroma-Regular, Roboto-Regular)
+  juce::Font mMichromaFont;
+  juce::Font mRobotoFont;
+
   // File loading rows
-  FileRow    mModelRow { "No model loaded" };
-  FileRow    mIRRow    { "No IR loaded" };
+  FileRow    mModelRow { "Select model..." };
+  FileRow    mIRRow    { "Select IR..." };
   LevelMeter mLevelMeter;
 
-  // Slim slider (next to NAM model row)
+  // Slim slider (next to NAM model row, matches original slimIconArea)
   juce::Slider mSlimSlider;
   std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
     mSlimAttachment;
@@ -56,17 +61,17 @@ private:
 
   // Knobs
   juce::Slider mInputGainSlider, mOutputGainSlider;
-  juce::Label  mInputGainLabel, mOutputGainLabel;
+  juce::Label  mInputGainLabel,  mOutputGainLabel;
 
   juce::Slider mBassSlider, mMiddleSlider, mTrebleSlider;
-  juce::Label  mBassLabel, mMiddleLabel, mTrebleLabel;
+  juce::Label  mBassLabel,  mMiddleLabel,  mTrebleLabel;
   juce::ToggleButton mToneStackButton { "EQ" };
 
   juce::Slider mNoiseGateSlider;
   juce::Label  mNoiseGateLabel;
   juce::ToggleButton mNoiseGateButton { "Noise Gate" };
 
-  // APVTS attachments keep knobs in sync with parameters.
+  // APVTS attachments
   std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
     mInputGainAttachment, mOutputGainAttachment, mNoiseGateAttachment,
     mBassAttachment, mMiddleAttachment, mTrebleAttachment;
