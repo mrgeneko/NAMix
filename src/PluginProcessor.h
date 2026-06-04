@@ -30,7 +30,8 @@
 #include "NoiseGate.h"
 #include "ToneStack.h"
 
-class GatewayAudioProcessor : public juce::AudioProcessor
+class GatewayAudioProcessor : public juce::AudioProcessor,
+                               public juce::AudioProcessorValueTreeState::Listener
 {
 public:
   GatewayAudioProcessor();
@@ -61,6 +62,9 @@ public:
 
   void getStateInformation(juce::MemoryBlock& dest) override;
   void setStateInformation(const void* data, int sizeInBytes) override;
+
+  // juce::AudioProcessorValueTreeState::Listener
+  void parameterChanged(const juce::String& parameterID, float newValue) override;
 
   // Model and IR loading — called from the editor on the message thread.
   // Returns true on success, false if the file could not be loaded.
@@ -110,6 +114,10 @@ private:
   // Output peak level (linear) for the UI meter — written by audio thread,
   // read by the message thread. Relaxed ordering is fine for a display value.
   std::atomic<float> mOutputLevel { 0.0f };
+
+  // Slim parameter dirty flag: set by parameterChanged (message thread),
+  // applied to the model in processBlock (audio thread).
+  std::atomic<bool> mSlimDirty { false };
 
   // Persisted file paths — stored in plugin state so DAW projects can reload.
   juce::String mModelPath;

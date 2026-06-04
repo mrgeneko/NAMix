@@ -24,6 +24,7 @@
 namespace iplug { static constexpr double PI = 3.14159265358979323846; }
 
 #include "ResamplingContainer/ResamplingContainer.h"
+#include "slimmable.h"
 
 #include <cmath>
 #include <stdexcept>
@@ -84,6 +85,14 @@ public:
   }
 
   int GetLatency() const { return mResampler.GetLatency(); }
+
+  // Applies slimmable size if the encapsulated model supports the interface.
+  // Thread-safe, not real-time safe — call from the audio thread only.
+  void TrySetSlimmableSize(double val)
+  {
+    if (auto* s = dynamic_cast<nam::SlimmableModel*>(mEncapsulated.get()))
+      s->SetSlimmableSize(val);
+  }
 
 private:
   std::unique_ptr<nam::DSP>                      mEncapsulated;
@@ -146,6 +155,14 @@ GatewayAudioProcessor::createParameterLayout()
   layout.add(std::make_unique<juce::AudioParameterBool>(
     juce::ParameterID{ params::kNoiseGateOn, 1 }, "Noise Gate On", true));
 
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+    juce::ParameterID{ "slim", 1 }, "Slim",
+    juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.0f));
+
+  layout.add(std::make_unique<juce::AudioParameterChoice>(
+    juce::ParameterID{ "outputMode", 1 }, "Output Mode",
+    juce::StringArray{ "Raw", "Normalized", "Calibrated" }, 1));
+
   return layout;
 }
 
@@ -162,9 +179,14 @@ GatewayAudioProcessor::GatewayAudioProcessor()
   // Wire the noise gate: trigger listens to the input and notifies the gain
   // module, which applies the computed envelope to the model output.
   mNoiseGateTrigger.AddListener(&mNoiseGateGain);
+
+  apvts.addParameterListener("slim", this);
 }
 
-GatewayAudioProcessor::~GatewayAudioProcessor() {}
+GatewayAudioProcessor::~GatewayAudioProcessor()
+{
+  apvts.removeParameterListener("slim", this);
+}
 
 // ---------------------------------------------------------------------------
 // Lifecycle
@@ -221,6 +243,14 @@ void GatewayAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
   }
   if (mIRPending.exchange(false))
     mIR = std::move(mPendingIR);
+
+  // Apply slim size update requested from the message thread.
+  if (mSlimDirty.exchange(false, std::memory_order_acq_rel))
+  {
+    const float v = apvts.getRawParameterValue("slim")->load();
+    if (auto* r = dynamic_cast<ResamplingNAM*>(mModel.get()))
+      r->TrySetSlimmableSize(static_cast<double>(v));
+  }
 
   applyDsp(buffer);
 }
@@ -325,6 +355,21 @@ void GatewayAudioProcessor::applyDsp(juce::AudioBuffer<float>& buffer)
   for (int i = 0; i < numSamples; ++i)
     floatOut[i] = static_cast<float>(finalBuf[i]) * outputGainLinear;
 
+  // Apply output mode normalization (Normalized = adjust to -18 dBFS target).
+  // NAM convention: model loudness in dBu; 0 dBu ≈ -20 dBFS in this context.
+  {
+    const int outMode = static_cast<int>(
+      apvts.getRawParameterValue("outputMode")->load());
+    if (outMode == 1 && mModel && mModel->HasLoudness())
+    {
+      const double modelDbFS = mModel->GetLoudness() - 20.0;
+      const float  normGain  =
+        juce::Decibels::decibelsToGain(static_cast<float>(-18.0 - modelDbFS));
+      for (int i = 0; i < numSamples; ++i)
+        floatOut[i] *= normGain;
+    }
+  }
+
   // Update output level for the UI meter.
   {
     float peak = 0.0f;
@@ -352,6 +397,10 @@ bool GatewayAudioProcessor::loadModel(const juce::File& file)
 
     auto wrapped = std::make_unique<ResamplingNAM>(std::move(raw), mSampleRate);
     wrapped->Reset(mSampleRate, mSamplesPerBlock);
+
+    // Apply current slim setting immediately on this model before it goes live.
+    wrapped->TrySetSlimmableSize(
+      static_cast<double>(apvts.getRawParameterValue("slim")->load()));
 
     mPendingModel = std::move(wrapped);
     mModelPath    = file.getFullPathName();
@@ -402,6 +451,16 @@ void GatewayAudioProcessor::clearIR()
   mPendingIR.reset();
   mIRPath = {};
   mIRPending.store(true);
+}
+
+// ---------------------------------------------------------------------------
+// Parameter listener
+// ---------------------------------------------------------------------------
+void GatewayAudioProcessor::parameterChanged(const juce::String& parameterID,
+                                              float /*newValue*/)
+{
+  if (parameterID == "slim")
+    mSlimDirty.store(true, std::memory_order_release);
 }
 
 // ---------------------------------------------------------------------------

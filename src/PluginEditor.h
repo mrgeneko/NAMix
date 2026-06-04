@@ -19,6 +19,7 @@
 #include "GatewayLookAndFeel.h"
 #include "FileRow.h"
 #include "LevelMeter.h"
+#include "GatewaySettingsPanel.h"
 
 class GatewayAudioProcessorEditor : public juce::AudioProcessorEditor,
                                     private juce::Timer
@@ -43,6 +44,15 @@ private:
   FileRow    mModelRow { "No model loaded" };
   FileRow    mIRRow    { "No IR loaded" };
   LevelMeter mLevelMeter;
+
+  // Slim slider (next to NAM model row)
+  juce::Slider mSlimSlider;
+  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
+    mSlimAttachment;
+
+  // Gear / settings
+  juce::TextButton      mGearButton;
+  GatewaySettingsPanel  mSettingsPanel;
 
   // Knobs
   juce::Slider mInputGainSlider, mOutputGainSlider;

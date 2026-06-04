@@ -13,12 +13,14 @@
 #include "PluginEditor.h"
 
 GatewayAudioProcessorEditor::GatewayAudioProcessorEditor(GatewayAudioProcessor& p)
-  : AudioProcessorEditor(&p), mProcessor(p)
+  : AudioProcessorEditor(&p)
+  , mProcessor(p)
+  , mSettingsPanel(p.apvts)
 {
   setLookAndFeel(&mLookAndFeel);
   setSize(580, 320);
 
-  // Knobs — label text set inside setupKnob
+  // --- Knobs ---
   setupKnob(mInputGainSlider,  mInputGainLabel,  "Input");
   setupKnob(mNoiseGateSlider,  mNoiseGateLabel,  "Threshold");
   setupKnob(mBassSlider,       mBassLabel,       "Bass");
@@ -26,7 +28,7 @@ GatewayAudioProcessorEditor::GatewayAudioProcessorEditor(GatewayAudioProcessor& 
   setupKnob(mTrebleSlider,     mTrebleLabel,     "Treble");
   setupKnob(mOutputGainSlider, mOutputGainLabel, "Output");
 
-  // APVTS attachments
+  // --- APVTS attachments ---
   auto& apvts = mProcessor.apvts;
   mInputGainAttachment = std::make_unique<
     juce::AudioProcessorValueTreeState::SliderAttachment>(
@@ -56,27 +58,59 @@ GatewayAudioProcessorEditor::GatewayAudioProcessorEditor(GatewayAudioProcessor& 
   addAndMakeVisible(mToneStackButton);
   addAndMakeVisible(mNoiseGateButton);
 
-  // Model file row
-  mModelRow.onLoad  = [this] { chooseModelFile(); };
+  // --- Slim slider ---
+  mSlimSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+  mSlimSlider.setTextBoxStyle(juce::Slider::NoTextBox, true, 0, 0);
+  mSlimSlider.setTooltip("Model size (0=smallest, 1=largest). Applies to slimmable"
+                          " WaveNet models only.");
+  addAndMakeVisible(mSlimSlider);
+  mSlimAttachment = std::make_unique<
+    juce::AudioProcessorValueTreeState::SliderAttachment>(
+    apvts, "slim", mSlimSlider);
+
+  // --- Gear / settings button ---
+  mGearButton.setButtonText("");
+  mGearButton.setTooltip("Settings");
+  mGearButton.onClick = [this] {
+    mSettingsPanel.setVisible(!mSettingsPanel.isVisible());
+  };
+  addAndMakeVisible(mGearButton);
+
+  // --- Settings panel (full-size overlay, hidden by default) ---
+  mSettingsPanel.onClose = [this] { mSettingsPanel.setVisible(false); };
+  addChildComponent(mSettingsPanel); // invisible until gear clicked
+
+  // --- Model file row ---
+  mModelRow.onOpenChooser = [this] { chooseModelFile(); };
+  mModelRow.onLoad = [this](juce::File f) {
+    if (mProcessor.loadModel(f))
+      mModelRow.setLoadedFile(f, "nam");
+  };
   mModelRow.onClear = [this] {
     mProcessor.clearModel();
-    mModelRow.setFilename("");
+    mModelRow.clearFile();
   };
   {
-    const juce::String p = mProcessor.getModelPath();
-    mModelRow.setFilename(p.isNotEmpty() ? juce::File(p).getFileName() : "");
+    const juce::String mp = mProcessor.getModelPath();
+    if (mp.isNotEmpty())
+      mModelRow.setLoadedFile(juce::File(mp), "nam");
   }
   addAndMakeVisible(mModelRow);
 
-  // IR file row
-  mIRRow.onLoad  = [this] { chooseIRFile(); };
+  // --- IR file row ---
+  mIRRow.onOpenChooser = [this] { chooseIRFile(); };
+  mIRRow.onLoad = [this](juce::File f) {
+    if (mProcessor.loadIR(f))
+      mIRRow.setLoadedFile(f, "wav");
+  };
   mIRRow.onClear = [this] {
     mProcessor.clearIR();
-    mIRRow.setFilename("");
+    mIRRow.clearFile();
   };
   {
-    const juce::String p = mProcessor.getIRPath();
-    mIRRow.setFilename(p.isNotEmpty() ? juce::File(p).getFileName() : "");
+    const juce::String ip = mProcessor.getIRPath();
+    if (ip.isNotEmpty())
+      mIRRow.setLoadedFile(juce::File(ip), "wav");
   }
   addAndMakeVisible(mIRRow);
 
@@ -107,46 +141,41 @@ void GatewayAudioProcessorEditor::paint(juce::Graphics& g)
              juce::Rectangle<int>(0, 0, getWidth() - 28, 32),
              juce::Justification::centred);
 
-  // Settings icon (top right) — 8-tooth gear drawn with radial lines
+  // Gear icon drawn behind the transparent mGearButton
   {
-    const float gx = getWidth() - 16.0f;
-    const float gy = 16.0f;
-    const float outerR = 8.0f;
-    const float innerR = 5.0f;
+    const float gx     = getWidth() - 16.0f;
+    const float gy     = 16.0f;
+    const float outer  = 8.0f;
+    const float inner  = 5.0f;
     const float holeR  = 2.5f;
+    const int   teeth  = 8;
     g.setColour(juce::Colours::white.withAlpha(0.55f));
 
     juce::Path gear;
-    const int teeth = 8;
     for (int i = 0; i < teeth; ++i)
     {
       const float a0 = juce::MathConstants<float>::twoPi * i / teeth;
       const float a1 = juce::MathConstants<float>::twoPi * (i + 0.3f) / teeth;
       const float a2 = juce::MathConstants<float>::twoPi * (i + 0.7f) / teeth;
       const float a3 = juce::MathConstants<float>::twoPi * (i + 1.0f) / teeth;
-
       auto pt = [&](float r, float a) -> juce::Point<float> {
         return { gx + r * std::sin(a), gy - r * std::cos(a) };
       };
-
-      if (i == 0)
-        gear.startNewSubPath(pt(innerR, a0));
-      else
-        gear.lineTo(pt(innerR, a0));
-      gear.lineTo(pt(outerR, a1));
-      gear.lineTo(pt(outerR, a2));
-      gear.lineTo(pt(innerR, a3));
+      if (i == 0) gear.startNewSubPath(pt(inner, a0));
+      else         gear.lineTo(pt(inner, a0));
+      gear.lineTo(pt(outer, a1));
+      gear.lineTo(pt(outer, a2));
+      gear.lineTo(pt(inner, a3));
     }
     gear.closeSubPath();
     g.fillPath(gear);
-
     g.setColour(juce::Colour(0xff1a1a2e));
     g.fillEllipse(gx - holeR, gy - holeR, holeR * 2.0f, holeR * 2.0f);
   }
 
   // Separator line above file rows
   g.setColour(juce::Colours::white.withAlpha(0.08f));
-  g.drawHorizontalLine(220, 0.0f, static_cast<float>(getWidth() - 22));
+  g.drawHorizontalLine(184, 0.0f, static_cast<float>(getWidth() - 22));
 }
 
 void GatewayAudioProcessorEditor::resized()
@@ -154,18 +183,23 @@ void GatewayAudioProcessorEditor::resized()
   const int meterW   = 12;
   const int meterGap = 6;
   const int contentW = getWidth() - meterW - meterGap;
+  const int knobW    = contentW / 6;
 
-  // Meter strip on the right
+  // Meter strip
   mLevelMeter.setBounds(contentW + meterGap, 32, meterW, getHeight() - 40);
 
-  const int knobW = contentW / 6;
+  // Gear button overlays the drawn gear icon
+  mGearButton.setBounds(getWidth() - 26, 4, 24, 24);
+
+  // Settings panel covers full editor
+  mSettingsPanel.setBounds(getLocalBounds());
 
   auto area = juce::Rectangle<int>(0, 0, contentW, getHeight());
-  area.removeFromTop(32); // title strip
+  area.removeFromTop(32); // title
 
-  // Knob area: label (16px) above, rotary slider fills remainder
+  // Knob area — smaller than before to reduce knob diameter
   {
-    auto knobArea = area.removeFromTop(150);
+    auto knobArea = area.removeFromTop(100);
     auto placeKnob = [&](juce::Slider& s, juce::Label& l) {
       auto cell = knobArea.removeFromLeft(knobW);
       l.setBounds(cell.removeFromTop(16));
@@ -179,7 +213,9 @@ void GatewayAudioProcessorEditor::resized()
     placeKnob(mOutputGainSlider, mOutputGainLabel);
   }
 
-  // Toggle strip: Noise Gate under Threshold (knob 1), EQ under Middle (knob 3)
+  area.removeFromTop(12); // gap between knobs and toggles
+
+  // Toggle strip — centred under Threshold (knob 1) and Middle (knob 3)
   {
     auto toggleArea = area.removeFromTop(36);
     const int ty = toggleArea.getY();
@@ -187,16 +223,25 @@ void GatewayAudioProcessorEditor::resized()
     mToneStackButton.setBounds(knobW * 3 + (knobW - 60) / 2, ty, 60, 36);
   }
 
-  area.removeFromTop(6);
+  area.removeFromTop(8); // gap before file rows
 
-  // File rows
-  mModelRow.setBounds(area.removeFromTop(38));
+  // Model row + Slim slider
+  {
+    constexpr int slimW = 84;
+    const int modelY = area.getY();
+    mModelRow.setBounds(0, modelY, contentW - slimW - 4, 38);
+    mSlimSlider.setBounds(contentW - slimW, modelY + 8, slimW, 22);
+    area.removeFromTop(38);
+  }
+
   area.removeFromTop(4);
+
+  // IR row
   mIRRow.setBounds(area.removeFromTop(38));
 }
 
 void GatewayAudioProcessorEditor::setupKnob(juce::Slider& slider,
-                                              juce::Label& label,
+                                              juce::Label&  label,
                                               const juce::String& name)
 {
   label.setText(name, juce::dontSendNotification);
@@ -223,7 +268,7 @@ void GatewayAudioProcessorEditor::chooseModelFile()
     [this](const juce::FileChooser& fc) {
       auto result = fc.getResult();
       if (result.existsAsFile() && mProcessor.loadModel(result))
-        mModelRow.setFilename(result.getFileName());
+        mModelRow.setLoadedFile(result, "nam");
     });
 }
 
@@ -240,6 +285,6 @@ void GatewayAudioProcessorEditor::chooseIRFile()
     [this](const juce::FileChooser& fc) {
       auto result = fc.getResult();
       if (result.existsAsFile() && mProcessor.loadIR(result))
-        mIRRow.setFilename(result.getFileName());
+        mIRRow.setLoadedFile(result, "wav");
     });
 }

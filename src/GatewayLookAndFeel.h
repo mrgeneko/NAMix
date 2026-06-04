@@ -128,4 +128,41 @@ public:
     g.drawText(button.getButtonText(), button.getLocalBounds(),
                juce::Justification::centred, false);
   }
+
+  void drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height,
+                        float sliderPos, float /*minPos*/, float /*maxPos*/,
+                        juce::Slider::SliderStyle style, juce::Slider&) override
+  {
+    if (style != juce::Slider::LinearHorizontal)
+    {
+      // Fallback for other styles
+      g.setColour(juce::Colour(0xff333344));
+      g.fillRect(x, y, width, height);
+      return;
+    }
+
+    const float trackY = y + height * 0.5f;
+    constexpr float trackH = 3.0f;
+
+    // Track background
+    g.setColour(juce::Colour(0xff333344));
+    g.fillRoundedRectangle((float)x, trackY - trackH * 0.5f,
+                            (float)width, trackH, trackH * 0.5f);
+
+    // Blue filled portion from left to thumb
+    const float filled = sliderPos - x;
+    if (filled > 0.0f)
+    {
+      g.setColour(juce::Colour(0xff4a90d9));
+      g.fillRoundedRectangle((float)x, trackY - trackH * 0.5f,
+                              filled, trackH, trackH * 0.5f);
+    }
+
+    // Thumb
+    constexpr float thumbR = 6.0f;
+    g.setColour(juce::Colour(0xff4a90d9));
+    g.fillEllipse(sliderPos - thumbR, trackY - thumbR, thumbR * 2.0f, thumbR * 2.0f);
+    g.setColour(juce::Colours::white.withAlpha(0.25f));
+    g.drawEllipse(sliderPos - thumbR, trackY - thumbR, thumbR * 2.0f, thumbR * 2.0f, 1.0f);
+  }
 };
