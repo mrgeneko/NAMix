@@ -12,10 +12,16 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_subdirectory(JUCE)
 
 # ---------------------------------------------------------------------------
-# NeuralAmpModelerCore sources (compiled directly; avoids its top-level
-# CMakeLists assumptions about being the root project)
+# NeuralAmpModelerCore + AudioDSPTools — compiled as a static library and
+# linked with --whole-archive.
+#
+# Each architecture (WaveNet, LSTM, ConvNet) self-registers via a file-scope
+# static ConfigParserHelper.  On Linux the VST3 is a shared library, and the
+# linker drops object files whose only content is an unreferenced static
+# initialiser.  --whole-archive forces every .o in the archive to be linked,
+# ensuring all registration side-effects execute at plugin load time.
 # ---------------------------------------------------------------------------
-set(NAM_SOURCES
+add_library(NamDsp STATIC
     NeuralAmpModelerCore/NAM/activations.cpp
     NeuralAmpModelerCore/NAM/container.cpp
     NeuralAmpModelerCore/NAM/conv1d.cpp
@@ -28,18 +34,24 @@ set(NAM_SOURCES
     NeuralAmpModelerCore/NAM/wavenet/model.cpp
     NeuralAmpModelerCore/NAM/wavenet/a2_fast.cpp
     NeuralAmpModelerCore/NAM/wavenet/slimmable.cpp
-)
-
-# ---------------------------------------------------------------------------
-# AudioDSPTools sources
-# ---------------------------------------------------------------------------
-set(DSP_SOURCES
     AudioDSPTools/dsp/dsp.cpp
     AudioDSPTools/dsp/ImpulseResponse.cpp
     AudioDSPTools/dsp/NoiseGate.cpp
     AudioDSPTools/dsp/RecursiveLinearFilter.cpp
     AudioDSPTools/dsp/wav.cpp
 )
+
+target_compile_definitions(NamDsp PUBLIC NAM_ENABLE_A2_FAST)
+
+target_include_directories(NamDsp PUBLIC
+    NeuralAmpModelerCore
+    NeuralAmpModelerCore/NAM
+    NeuralAmpModelerCore/Dependencies/nlohmann
+    AudioDSPTools/dsp
+    eigen
+)
+
+target_compile_options(NamDsp PRIVATE -ffast-math -Wno-unused-parameter -fPIC)
 
 # ---------------------------------------------------------------------------
 # Plugin definition
@@ -66,8 +78,6 @@ target_sources(GatewayLinux PRIVATE
     src/PluginProcessor.cpp
     src/PluginEditor.cpp
     src/ToneStack.cpp
-    ${NAM_SOURCES}
-    ${DSP_SOURCES}
 )
 
 # ---------------------------------------------------------------------------
@@ -81,16 +91,14 @@ target_compile_definitions(GatewayLinux
         NAM_ENABLE_A2_FAST
 )
 
+# NamDsp's PUBLIC include paths flow into GatewayLinux automatically via the
+# target_link_libraries below, so no need to repeat them here.
+
 # ---------------------------------------------------------------------------
 # Include paths
 # ---------------------------------------------------------------------------
 target_include_directories(GatewayLinux PRIVATE
     src
-    NeuralAmpModelerCore
-    NeuralAmpModelerCore/NAM
-    NeuralAmpModelerCore/Dependencies/nlohmann
-    AudioDSPTools/dsp
-    eigen
 )
 
 # ---------------------------------------------------------------------------
@@ -98,6 +106,10 @@ target_include_directories(GatewayLinux PRIVATE
 # ---------------------------------------------------------------------------
 target_link_libraries(GatewayLinux
     PRIVATE
+        # --whole-archive ensures every .o in NamDsp is linked into the VST3
+        # .so, so that static-initialiser registrations (WaveNet, LSTM, etc.)
+        # always execute at plugin load time regardless of LTO / --as-needed.
+        -Wl,--whole-archive NamDsp -Wl,--no-whole-archive
         juce::juce_audio_utils
         juce::juce_opengl
         stdc++fs

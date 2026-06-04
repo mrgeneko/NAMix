@@ -333,7 +333,7 @@ void GatewayAudioProcessor::applyDsp(juce::AudioBuffer<float>& buffer)
 // ---------------------------------------------------------------------------
 // Model / IR loading (called from message thread)
 // ---------------------------------------------------------------------------
-void GatewayAudioProcessor::loadModel(const juce::File& file)
+bool GatewayAudioProcessor::loadModel(const juce::File& file)
 {
   try
   {
@@ -348,11 +348,13 @@ void GatewayAudioProcessor::loadModel(const juce::File& file)
     mPendingModel = std::move(wrapped);
     mModelPath    = file.getFullPathName();
     mModelPending.store(true);
+    return true;
   }
   catch (const std::exception& e)
   {
     juce::Logger::writeToLog(
       juce::String("Gateway: model load failed: ") + e.what());
+    return false;
   }
 }
 
@@ -363,20 +365,27 @@ void GatewayAudioProcessor::clearModel()
   mModelPending.store(true);
 }
 
-void GatewayAudioProcessor::loadIR(const juce::File& file)
+bool GatewayAudioProcessor::loadIR(const juce::File& file)
 {
   try
   {
     auto ir = std::make_unique<dsp::ImpulseResponse>(
       file.getFullPathName().toStdString().c_str(), mSampleRate);
+    if (ir->GetWavState() != dsp::wav::LoadReturnCode::SUCCESS)
+    {
+      juce::Logger::writeToLog("Gateway: IR load failed: bad WAV file");
+      return false;
+    }
     mPendingIR = std::move(ir);
     mIRPath    = file.getFullPathName();
     mIRPending.store(true);
+    return true;
   }
   catch (const std::exception& e)
   {
     juce::Logger::writeToLog(
       juce::String("Gateway: IR load failed: ") + e.what());
+    return false;
   }
 }
 

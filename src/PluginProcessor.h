@@ -63,11 +63,15 @@ public:
   void setStateInformation(const void* data, int sizeInBytes) override;
 
   // Model and IR loading — called from the editor on the message thread.
+  // Returns true on success, false if the file could not be loaded.
   // The processor takes ownership and swaps on the next processBlock call.
-  void loadModel(const juce::File& file);
+  bool loadModel(const juce::File& file);
   void clearModel();
-  void loadIR(const juce::File& file);
+  bool loadIR(const juce::File& file);
   void clearIR();
+
+  juce::String getModelPath() const { return mModelPath; }
+  juce::String getIRPath()    const { return mIRPath; }
 
   juce::AudioProcessorValueTreeState apvts;
 

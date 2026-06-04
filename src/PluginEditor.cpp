@@ -56,7 +56,11 @@ GatewayAudioProcessorEditor::GatewayAudioProcessorEditor(GatewayAudioProcessor& 
   addAndMakeVisible(mLoadModelButton);
   addAndMakeVisible(mClearModelButton);
   addAndMakeVisible(mModelLabel);
-  mModelLabel.setText("No model loaded", juce::dontSendNotification);
+  {
+    const juce::String p = mProcessor.getModelPath();
+    mModelLabel.setText(p.isNotEmpty() ? juce::File(p).getFileName() : "No model loaded",
+                        juce::dontSendNotification);
+  }
   mModelLabel.setJustificationType(juce::Justification::centredLeft);
   mLoadModelButton.onClick = [this] { chooseModelFile(); };
   mClearModelButton.onClick = [this] {
@@ -68,7 +72,11 @@ GatewayAudioProcessorEditor::GatewayAudioProcessorEditor(GatewayAudioProcessor& 
   addAndMakeVisible(mLoadIRButton);
   addAndMakeVisible(mClearIRButton);
   addAndMakeVisible(mIRLabel);
-  mIRLabel.setText("No IR loaded", juce::dontSendNotification);
+  {
+    const juce::String p = mProcessor.getIRPath();
+    mIRLabel.setText(p.isNotEmpty() ? juce::File(p).getFileName() : "No IR loaded",
+                     juce::dontSendNotification);
+  }
   mIRLabel.setJustificationType(juce::Justification::centredLeft);
   mLoadIRButton.onClick = [this] { chooseIRFile(); };
   mClearIRButton.onClick = [this] {
@@ -166,11 +174,8 @@ void GatewayAudioProcessorEditor::chooseModelFile()
       | juce::FileBrowserComponent::canSelectFiles,
     [this](const juce::FileChooser& fc) {
       auto result = fc.getResult();
-      if (result.existsAsFile())
-      {
-        mProcessor.loadModel(result);
+      if (result.existsAsFile() && mProcessor.loadModel(result))
         mModelLabel.setText(result.getFileName(), juce::dontSendNotification);
-      }
     });
 }
 
@@ -185,10 +190,7 @@ void GatewayAudioProcessorEditor::chooseIRFile()
       | juce::FileBrowserComponent::canSelectFiles,
     [this](const juce::FileChooser& fc) {
       auto result = fc.getResult();
-      if (result.existsAsFile())
-      {
-        mProcessor.loadIR(result);
+      if (result.existsAsFile() && mProcessor.loadIR(result))
         mIRLabel.setText(result.getFileName(), juce::dontSendNotification);
-      }
     });
 }
