@@ -218,6 +218,7 @@ void GatewayAudioProcessorEditor::timerCallback()
 {
   mInputLevelMeter.setLevel(mProcessor.getInputLevel());
   mLevelMeter.setLevel(mProcessor.getOutputLevel());
+  mSettingsPanel.setInputCalibrationEnabled(mProcessor.getModelHasInputLevel());
 }
 
 void GatewayAudioProcessorEditor::paint(juce::Graphics& g)

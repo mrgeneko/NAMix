@@ -242,11 +242,15 @@ void GatewayAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     mModel = std::move(mPendingModel);
     if (mModel)
     {
+      mModelHasInputLevel.store(mModel->HasInputLevel(), std::memory_order_relaxed);
+      mModelHasOutputLevel.store(mModel->HasOutputLevel(), std::memory_order_relaxed);
       if (auto* r = dynamic_cast<ResamplingNAM*>(mModel.get()))
         setLatencySamples(r->GetLatency());
     }
     else
     {
+      mModelHasInputLevel.store(false, std::memory_order_relaxed);
+      mModelHasOutputLevel.store(false, std::memory_order_relaxed);
       setLatencySamples(0);
     }
   }
@@ -388,18 +392,26 @@ void GatewayAudioProcessor::applyDsp(juce::AudioBuffer<float>& buffer)
   for (int i = 0; i < numSamples; ++i)
     floatOut[i] = static_cast<float>(finalBuf[i]) * outputGainLinear;
 
-  // Apply output mode normalization (Normalized = adjust to -18 dBFS target).
-  // NAM convention: model loudness in dBu; 0 dBu ≈ -20 dBFS in this context.
+  // Apply output mode — matches original _SetOutputGain() exactly.
   {
     const int outMode = static_cast<int>(
       apvts.getRawParameterValue("outputMode")->load());
     if (outMode == 1 && mModel && mModel->HasLoudness())
     {
-      const double modelDbFS = mModel->GetLoudness() - 20.0;
-      const float  normGain  =
-        juce::Decibels::decibelsToGain(static_cast<float>(-18.0 - modelDbFS));
+      // Normalized: gainDB += (targetLoudness - loudness), target = -18 dB.
+      const float normGain = juce::Decibels::decibelsToGain(
+        static_cast<float>(-18.0 - mModel->GetLoudness()));
       for (int i = 0; i < numSamples; ++i)
         floatOut[i] *= normGain;
+    }
+    else if (outMode == 2 && mModel && mModel->HasOutputLevel())
+    {
+      // Calibrated: gainDB += (outputLevel - inputCalibrationLevel).
+      const float inputLevel  = apvts.getRawParameterValue("inputCalibrationLevel")->load();
+      const float outputLevel = static_cast<float>(mModel->GetOutputLevel());
+      const float calibGain   = juce::Decibels::decibelsToGain(outputLevel - inputLevel);
+      for (int i = 0; i < numSamples; ++i)
+        floatOut[i] *= calibGain;
     }
   }
 

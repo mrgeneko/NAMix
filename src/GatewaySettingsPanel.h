@@ -90,6 +90,16 @@ public:
     refreshFromState();
   }
 
+  // Enable/disable input calibration controls based on whether the loaded model
+  // carries input level metadata (HasInputLevel). Mirrors original behaviour
+  // where kCtrlTagCalibrateInput and kCtrlTagInputCalibrationLevel are disabled
+  // when !mModel->HasInputLevel().
+  void setInputCalibrationEnabled(bool enabled)
+  {
+    mInputCalibSlider.setEnabled(enabled);
+    mCalibrateInputButton.setEnabled(enabled);
+  }
+
   // Called by the editor after a model loads.
   void setModelSampleRate(double sampleRate)
   {

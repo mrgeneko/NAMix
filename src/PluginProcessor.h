@@ -76,8 +76,10 @@ public:
 
   juce::String getModelPath()  const { return mModelPath; }
   juce::String getIRPath()     const { return mIRPath; }
-  float        getInputLevel()  const { return mInputLevel.load(std::memory_order_relaxed); }
-  float        getOutputLevel() const { return mOutputLevel.load(std::memory_order_relaxed); }
+  float        getInputLevel()       const { return mInputLevel.load(std::memory_order_relaxed); }
+  float        getOutputLevel()      const { return mOutputLevel.load(std::memory_order_relaxed); }
+  bool         getModelHasInputLevel()  const { return mModelHasInputLevel.load(std::memory_order_relaxed); }
+  bool         getModelHasOutputLevel() const { return mModelHasOutputLevel.load(std::memory_order_relaxed); }
 
   juce::AudioProcessorValueTreeState apvts;
 
@@ -120,6 +122,11 @@ private:
   // Slim parameter dirty flag: set by parameterChanged (message thread),
   // applied to the model in processBlock (audio thread).
   std::atomic<bool> mSlimDirty { false };
+
+  // Model capability flags — written on audio thread when model swaps, read by
+  // message thread to enable/disable UI controls.
+  std::atomic<bool> mModelHasInputLevel  { false };
+  std::atomic<bool> mModelHasOutputLevel { false };
 
   // Persisted file paths — stored in plugin state so DAW projects can reload.
   juce::String mModelPath;
