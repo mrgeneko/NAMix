@@ -12,6 +12,7 @@
 
 #pragma once
 #include <juce_gui_basics/juce_gui_basics.h>
+#include <BinaryData.h>
 #include <cmath>
 
 // Exact NAM colour palette
@@ -34,6 +35,12 @@ class GatewayLookAndFeel : public juce::LookAndFeel_V4
 public:
   GatewayLookAndFeel()
   {
+    // Load embedded Roboto typeface so font rendering works on Linux
+    // without the font being installed system-wide.
+    auto robotoTypeface = juce::Typeface::createSystemTypefaceFor(
+      BinaryData::RobotoRegular_ttf, BinaryData::RobotoRegular_ttfSize);
+    mRobotoFont = juce::Font(robotoTypeface);
+
     // Slider text colours — use NAM font colour on transparent background
     setColour(juce::Slider::textBoxTextColourId,
               NAMColours::FONT.withAlpha(0.85f));
@@ -107,40 +114,64 @@ public:
   }
 
   // -----------------------------------------------------------------------
-  // Pill-style toggle — Azure when on, dimmed when off, label below
-  // Matches NAMSwitchControl style (roundness ≈ 7px)
+  // Pill-style toggle — Azure when on, dimmed when off.
+  // Matches NAMSwitchControl style (roundness ≈ 7px).
+  //
+  // Two modes based on button width:
+  //  • Narrow (≤80px) — used on main plugin: pill centred, label below.
+  //  • Wide   (>80px) — used in settings radio group: pill on left,
+  //    label to the right, both vertically centred.
   // -----------------------------------------------------------------------
   void drawToggleButton(juce::Graphics& g, juce::ToggleButton& button,
                         bool, bool) override
   {
-    const bool on = button.getToggleState();
-    const auto b  = button.getLocalBounds().toFloat();
+    const bool on      = button.getToggleState();
+    const auto b       = button.getLocalBounds().toFloat();
+    const bool wide    = (b.getWidth() > 100.0f);
 
-    // Pill dimensions — same proportions as NAMSwitchControl
     constexpr float pw = 40.0f, ph = 22.0f;
-    const float px = (b.getWidth()  - pw) * 0.5f;
-    const float py = (b.getHeight() - ph - 16.0f) * 0.5f; // leave room for label
 
-    // Track background — Azure (on) / dark (off)
+    // Pill position
+    const float px = wide ? 4.0f : (b.getWidth() - pw) * 0.5f;
+    const float py = wide ? (b.getHeight() - ph) * 0.5f
+                          : (b.getHeight() - ph - 16.0f) * 0.5f;
+
+    // Track background — Azure (on) / dimmed Azure (off)
     g.setColour(on ? NAMColours::BLUE : NAMColours::BLUE.withAlpha(0.15f));
-    g.fillRoundedRectangle(px, py, pw, ph, 7.0f); // cR = 7 from NAM
+    g.fillRoundedRectangle(px, py, pw, ph, ph * 0.5f);
 
     // Frame stroke
     g.setColour(juce::Colours::black.withAlpha(0.5f));
-    g.drawRoundedRectangle(px, py, pw, ph, 7.0f, 0.5f);
+    g.drawRoundedRectangle(px, py, pw, ph, ph * 0.5f, 0.5f);
 
-    // Thumb (white pill handle)
+    // Thumb (white rounded handle, slides left/right)
     constexpr float tw = ph - 6.0f, th = ph - 6.0f;
     const float tx = on ? px + pw - tw - 3.0f : px + 3.0f;
     g.setColour(juce::Colours::white);
-    g.fillRoundedRectangle(tx, py + 3.0f, tw, th, 7.0f);
+    g.fillRoundedRectangle(tx, py + 3.0f, tw, th, ph * 0.5f);
 
-    // Label (below pill) — NAM_THEMEFONTCOLOR at full opacity
-    g.setColour(NAMColours::FONT.withAlpha(on ? 1.0f : 0.55f));
-    g.setFont(juce::Font("Roboto-Regular", 12.0f, juce::Font::plain));
-    g.drawText(button.getButtonText(),
-               juce::Rectangle<float>(0.0f, py + ph + 3.0f, b.getWidth(), 14.0f),
-               juce::Justification::centred, false);
+    // Label text
+    if (button.getButtonText().isNotEmpty())
+    {
+      g.setColour(NAMColours::FONT.withAlpha(on ? 1.0f : 0.55f));
+      if (wide)
+      {
+        // Right of pill, vertically centred — settings radio group style
+        g.setFont(mRobotoFont.withHeight(14.0f));
+        g.drawText(button.getButtonText(),
+                   juce::Rectangle<float>(px + pw + 8.0f, 0.0f,
+                                         b.getWidth() - px - pw - 12.0f, b.getHeight()),
+                   juce::Justification::centredLeft, false);
+      }
+      else
+      {
+        // Below pill, horizontally centred — main plugin switch style
+        g.setFont(mRobotoFont.withHeight(12.0f));
+        g.drawText(button.getButtonText(),
+                   juce::Rectangle<float>(0.0f, py + ph + 3.0f, b.getWidth(), 14.0f),
+                   juce::Justification::centred, false);
+      }
+    }
   }
 
   // Transparent background for icon/empty buttons; faint press state only
@@ -168,7 +199,7 @@ public:
   {
     if (button.getButtonText().isEmpty()) return;
     g.setColour(NAMColours::FONT.withAlpha(0.8f));
-    g.setFont(juce::Font("Roboto-Regular", 13.0f, juce::Font::plain));
+    g.setFont(mRobotoFont.withHeight(13.0f));
     g.drawText(button.getButtonText(), button.getLocalBounds(),
                juce::Justification::centred, false);
   }
@@ -213,4 +244,7 @@ public:
     g.fillEllipse(sliderPos - thumbR, trackY - thumbR,
                   thumbR * 2.0f, thumbR * 2.0f);
   }
+
+private:
+  juce::Font mRobotoFont;
 };

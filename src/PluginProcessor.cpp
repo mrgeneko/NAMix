@@ -163,6 +163,15 @@ GatewayAudioProcessor::createParameterLayout()
     juce::ParameterID{ "outputMode", 1 }, "Output Mode",
     juce::StringArray{ "Raw", "Normalized", "Calibrated" }, 1));
 
+  // Input calibration — matches original: range -60..60 dBu, default 12.0, step 0.1
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+    juce::ParameterID{ "inputCalibrationLevel", 1 }, "Input Calibration Level",
+    juce::NormalisableRange<float>(-60.0f, 60.0f, 0.1f), 12.0f,
+    juce::AudioParameterFloatAttributes{}.withLabel("dBu")));
+
+  layout.add(std::make_unique<juce::AudioParameterBool>(
+    juce::ParameterID{ "calibrateInput", 1 }, "Calibrate Input", false));
+
   return layout;
 }
 
@@ -262,8 +271,24 @@ void GatewayAudioProcessor::applyDsp(juce::AudioBuffer<float>& buffer)
 {
   const int numSamples = buffer.getNumSamples();
 
-  const float inputGainDb =
+  float inputGainDb =
     apvts.getRawParameterValue(params::kInputGain)->load();
+
+  // Input calibration — mirrors original: adjust input gain so the model
+  // receives signal at its expected input level (in dBu).
+  // kDefaultInputCalibrationLevel = 12.0; model's GetInputLevel() is also dBu.
+  if (mModel && mModel->HasInputLevel())
+  {
+    const bool calibrateInput =
+      apvts.getRawParameterValue("calibrateInput")->load() > 0.5f;
+    if (calibrateInput)
+    {
+      const float calibLevel =
+        apvts.getRawParameterValue("inputCalibrationLevel")->load();
+      inputGainDb += calibLevel - static_cast<float>(mModel->GetInputLevel());
+    }
+  }
+
   const float outputGainDb =
     apvts.getRawParameterValue(params::kOutputGain)->load();
   const float inputGainLinear  = juce::Decibels::decibelsToGain(inputGainDb);

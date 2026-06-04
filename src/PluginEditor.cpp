@@ -148,28 +148,36 @@ GatewayAudioProcessorEditor::GatewayAudioProcessorEditor(GatewayAudioProcessor& 
   mGearButton.setButtonText("");
   mGearButton.setTooltip("Settings");
   mGearButton.onClick = [this] {
-    mSettingsPanel.setVisible(!mSettingsPanel.isVisible());
+    const bool show = !mSettingsPanel.isVisible();
+    mSettingsPanel.setVisible(show);
+    if (show)
+      mSettingsPanel.toFront(false); // ensure it covers all other children
   };
   addAndMakeVisible(mGearButton);
 
-  // --- Settings overlay ---
+  // Settings panel wired here but added as child LAST (after all other
+  // components) so it sits at the top of the z-order when visible.
   mSettingsPanel.onClose = [this] { mSettingsPanel.setVisible(false); };
-  addChildComponent(mSettingsPanel);
 
   // --- Model file row ---
   mModelRow.onOpenChooser = [this] { chooseModelFile(); };
   mModelRow.onLoad = [this](juce::File f) {
-    if (mProcessor.loadModel(f))
+    if (mProcessor.loadModel(f)) {
       mModelRow.setLoadedFile(f, "nam");
+      mSettingsPanel.setModelSampleRate(mProcessor.getSampleRate());
+    }
   };
   mModelRow.onClear = [this] {
     mProcessor.clearModel();
     mModelRow.clearFile();
+    mSettingsPanel.clearModelInfo();
   };
   {
     const juce::String mp = mProcessor.getModelPath();
-    if (mp.isNotEmpty())
+    if (mp.isNotEmpty()) {
       mModelRow.setLoadedFile(juce::File(mp), "nam");
+      mSettingsPanel.setModelSampleRate(mProcessor.getSampleRate());
+    }
   }
   addAndMakeVisible(mModelRow);
 
@@ -192,6 +200,10 @@ GatewayAudioProcessorEditor::GatewayAudioProcessorEditor(GatewayAudioProcessor& 
 
   addAndMakeVisible(mInputLevelMeter);
   addAndMakeVisible(mLevelMeter);
+
+  // Add settings panel last so it is at the top of the z-order and covers
+  // every other child when shown.
+  addChildComponent(mSettingsPanel);
 
   startTimerHz(30);
 }
@@ -345,8 +357,10 @@ void GatewayAudioProcessorEditor::chooseModelFile()
       | juce::FileBrowserComponent::canSelectFiles,
     [this](const juce::FileChooser& fc) {
       auto result = fc.getResult();
-      if (result.existsAsFile() && mProcessor.loadModel(result))
+      if (result.existsAsFile() && mProcessor.loadModel(result)) {
         mModelRow.setLoadedFile(result, "nam");
+        mSettingsPanel.setModelSampleRate(mProcessor.getSampleRate());
+      }
     });
 }
 
