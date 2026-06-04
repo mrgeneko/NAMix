@@ -13,6 +13,6 @@ find "$BUNDLE" -name "*.so" -exec strip --strip-unneeded {} \;
 VERSION="$(grep -oP '(?<=project\(gateway-linux VERSION )\S+' "$REPO/CMakeLists.txt")"
 
 mkdir -p "$REPO/dist"
-TARBALL="$REPO/dist/Gateway-${VERSION}-linux.tar.gz"
+TARBALL="$REPO/dist/Gateway-${VERSION}-linux-$(uname -m).tar.gz"
 tar -czf "$TARBALL" -C "$(dirname "$BUNDLE")" "$(basename "$BUNDLE")"
 echo "Packaged: $TARBALL"
