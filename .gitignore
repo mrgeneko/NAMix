@@ -1,5 +1,6 @@
 # Claude Code developer notes — local only, not for version control
 CLAUDE.md
+.claude/
 
 # Build directories
 build/

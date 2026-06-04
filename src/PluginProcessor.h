@@ -22,11 +22,12 @@
 #include <atomic>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "NAM/dsp.h"
-#include "dsp/dsp.h"
-#include "dsp/ImpulseResponse.h"
-#include "dsp/NoiseGate.h"
+#include "dsp.h"
+#include "ImpulseResponse.h"
+#include "NoiseGate.h"
 #include "ToneStack.h"
 
 class GatewayAudioProcessor : public juce::AudioProcessor
@@ -87,11 +88,23 @@ private:
   std::unique_ptr<dsp::ImpulseResponse> mIR;
   std::atomic<bool> mIRPending{ false };
 
+  // Noise gate: two-stage (trigger detects signal, gain applies attenuation).
+  // Trigger is wired to Gain via AddListener in the constructor.
   dsp::noise_gate::Trigger mNoiseGateTrigger;
-  dsp::noise_gate::Gain mNoiseGateGain;
+  dsp::noise_gate::Gain    mNoiseGateGain;
 
-  ToneStackParams mToneStackParams;
-  ToneStack mToneStack;
+  dsp::tone_stack::BasicNamToneStack mToneStack;
+
+  // Pre-allocated double-precision work buffers used in applyDsp().
+  // Avoids any audio-thread allocation. mWorkPtrInput/Output point into these.
+  std::vector<DSP_SAMPLE> mWorkBufInput;
+  std::vector<DSP_SAMPLE> mWorkBufOutput;
+  DSP_SAMPLE* mWorkPtrInput  = nullptr;
+  DSP_SAMPLE* mWorkPtrOutput = nullptr;
+
+  // Persisted file paths — stored in plugin state so DAW projects can reload.
+  juce::String mModelPath;
+  juce::String mIRPath;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GatewayAudioProcessor)
 };

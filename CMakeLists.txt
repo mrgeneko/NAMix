@@ -88,6 +88,7 @@ target_include_directories(GatewayLinux PRIVATE
     src
     NeuralAmpModelerCore
     NeuralAmpModelerCore/NAM
+    NeuralAmpModelerCore/Dependencies/nlohmann
     AudioDSPTools/dsp
     eigen
 )
