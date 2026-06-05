@@ -132,7 +132,12 @@ GatewayAudioProcessorEditor::GatewayAudioProcessorEditor(GatewayAudioProcessor &
   }
 
   setLookAndFeel(&mLookAndFeel);
-  setSize(600, 400); // exact original PLUG_WIDTH × PLUG_HEIGHT
+  setSize(600, 400);
+
+  mBgImage = juce::ImageCache::getFromMemory(BinaryData::Background_jpg,
+                                             BinaryData::Background_jpgSize);
+  mLinesImage = juce::ImageCache::getFromMemory(BinaryData::Lines_png,
+                                                BinaryData::Lines_pngSize);
 
   // In standalone mode: enable native OS title bar and attach a File/Help
   // menu bar just below it (DocumentWindow::setMenuBar positions it
@@ -294,8 +299,20 @@ void GatewayAudioProcessorEditor::timerCallback() {
 }
 
 void GatewayAudioProcessorEditor::paint(juce::Graphics &g) {
-  // NAM_1: Raisin Black
-  g.fillAll(juce::Colour(0xff1d1a1f));
+  // Plugin background — use pre-rendered Background.jpg for depth/texture
+  if (mBgImage.isValid())
+    g.drawImage(mBgImage, 0, 0, getWidth(), getHeight(), 0, 0,
+                mBgImage.getWidth(), mBgImage.getHeight(), false);
+  else
+    g.fillAll(juce::Colour(0xff1d1a1f));
+
+  // Lines texture overlay at low opacity
+  if (mLinesImage.isValid()) {
+    g.setOpacity(0.35f);
+    g.drawImage(mLinesImage, 0, 0, getWidth(), getHeight(), 0, 0,
+                mLinesImage.getWidth(), mLinesImage.getHeight(), false);
+    g.setOpacity(1.0f);
+  }
 
   // Title — Michroma-Regular 30px, white, centred in contentArea.GetFromTop(50)
   g.setColour(juce::Colour(0xfff2f2f2));

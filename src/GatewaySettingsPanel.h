@@ -45,6 +45,9 @@ public:
         BinaryData::RobotoRegular_ttf, BinaryData::RobotoRegular_ttfSize);
     mRobotoFont = juce::Font(robotoTypeface).withHeight(14.0f);
 
+    mInputLevelBg = juce::ImageCache::getFromMemory(
+        BinaryData::InputLevelBackground_png, BinaryData::InputLevelBackground_pngSize);
+
     // Close button — CornerButtonArea: (545, 35, 20, 20)
     mCloseButton.setButtonText(juce::String(juce::CharPointer_UTF8("\xc3\x97")));
     mCloseButton.onClick = [this] {
@@ -157,6 +160,12 @@ public:
     g.drawText("INPUT CALIBRATION", juce::Rectangle<int>(30, 85, 270, 14),
                juce::Justification::centredLeft);
 
+    // Recessed background bitmap behind the dBu input level text box
+    // inputLevelArea: (121, 175, 87, 25)
+    if (mInputLevelBg.isValid())
+      g.drawImage(mInputLevelBg, 121, 175, 87, 25, 0, 0, mInputLevelBg.getWidth(),
+                  mInputLevelBg.getHeight(), false);
+
     // -----------------------------------------------------------------------
     // Right-side header (above output mode radio buttons)
     // -----------------------------------------------------------------------
@@ -241,6 +250,7 @@ private:
   juce::AudioProcessorValueTreeState &mApvts;
   juce::Font mMichromaFont;
   juce::Font mRobotoFont;
+  juce::Image mInputLevelBg;
   juce::String mModelSampleRate;
   bool mHasModelInfo = false;
 

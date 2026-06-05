@@ -11,9 +11,10 @@
  */
 
 #pragma once
+#include <BinaryData.h>
 #include <juce_gui_basics/juce_gui_basics.h>
-#include <atomic>
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 
 // Vertical peak-hold level meter. The audio thread writes via setLevel();
@@ -21,7 +22,12 @@
 class LevelMeter : public juce::Component, public juce::Timer
 {
 public:
-  LevelMeter()  { startTimerHz(30); }
+  LevelMeter()
+  {
+    mBg = juce::ImageCache::getFromMemory(BinaryData::MeterBackground_png,
+                                          BinaryData::MeterBackground_pngSize);
+    startTimerHz(30);
+  }
   ~LevelMeter() override { stopTimer(); }
 
   // Called from the editor's timer callback with the processor's output peak.
@@ -68,9 +74,14 @@ public:
   {
     const auto b = getLocalBounds().toFloat();
 
-    // Track background — dark, close to NAM_1
-    g.setColour(juce::Colour(0xff131116));
-    g.fillRect(b);
+    // Recessed background bitmap (glossy black, baked-in inset bevel)
+    if (mBg.isValid())
+      g.drawImage(mBg, (int)b.getX(), (int)b.getY(), (int)b.getWidth(),
+                  (int)b.getHeight(), 0, 0, mBg.getWidth(), mBg.getHeight(), false);
+    else {
+      g.setColour(juce::Colour(0xff131116));
+      g.fillRect(b);
+    }
 
     // Level fill from bottom — Azure (NAM_THEMECOLOR)
     if (mLevel > 0.0f)
@@ -96,7 +107,8 @@ public:
   }
 
 private:
-  std::atomic<float> mIncoming { 0.0f };
+  juce::Image mBg;
+  std::atomic<float> mIncoming{0.0f};
   float mLevel    = 0.0f;
   float mPeak     = 0.0f;
   int   mPeakHold = 0;

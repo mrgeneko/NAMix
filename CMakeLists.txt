@@ -61,6 +61,12 @@ juce_add_binary_data(GatewayBinaryData SOURCES
     resources/fonts/Michroma-Regular.ttf
     resources/fonts/Roboto-Regular.ttf
     resources/img/SlimmableIcon.svg
+    resources/img/Background.jpg
+    resources/img/KnobBackground.png
+    resources/img/MeterBackground.png
+    resources/img/FileBackground.png
+    resources/img/InputLevelBackground.png
+    resources/img/Lines.png
 )
 
 # ---------------------------------------------------------------------------

@@ -32,13 +32,13 @@ static const juce::Colour FILE_BG{0xff1a1720};
 class GatewayLookAndFeel : public juce::LookAndFeel_V4 {
 public:
   GatewayLookAndFeel() {
-    // Load embedded Roboto typeface so font rendering works on Linux
-    // without the font being installed system-wide.
     auto robotoTypeface = juce::Typeface::createSystemTypefaceFor(
         BinaryData::RobotoRegular_ttf, BinaryData::RobotoRegular_ttfSize);
     mRobotoFont = juce::Font(robotoTypeface);
 
-    // Slider text colours — use NAM font colour on transparent background
+    mKnobBg = juce::ImageCache::getFromMemory(BinaryData::KnobBackground_png,
+                                              BinaryData::KnobBackground_pngSize);
+
     setColour(juce::Slider::textBoxTextColourId, NAMColours::FONT.withAlpha(0.85f));
     setColour(juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
     setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
@@ -48,7 +48,12 @@ public:
   }
 
   // -----------------------------------------------------------------------
-  // Rotary knob — dark body, Cadet Blue track arc, Azure value arc + dot
+  // Rotary knob — matches NAMKnobControl draw order exactly:
+  //   1. shadow ring behind everything
+  //   2. Cadet Blue full track arc
+  //   3. Azure value arc
+  //   4. KnobBackground.png bitmap (pre-rendered 3D body, MIT-licensed)
+  //   5. Radial-gradient Azure dot at pointer tip + black outline shadow
   // -----------------------------------------------------------------------
   void drawRotarySlider(juce::Graphics &g, int x, int y, int width, int height,
                         float sliderPos, float startAngle, float endAngle,
@@ -56,15 +61,15 @@ public:
     const float cx = x + width * 0.5f;
     const float cy = y + height * 0.5f;
     const float outerR = std::min(width, height) * 0.5f - 4.0f;
-    const float innerR = outerR * 0.73f; // matches NAM's widget radius factor
+    const float innerR = outerR * 0.73f;
     const float arcW = 3.5f;
     const float curAngle = startAngle + sliderPos * (endAngle - startAngle);
 
-    // Shadow ring (NAM draws a shadow behind the knob body)
+    // Shadow ring — dark halo behind the knob body
     g.setColour(juce::Colours::black.withAlpha(0.5f));
     g.fillEllipse(cx - innerR + 1.5f, cy - innerR + 1.5f, innerR * 2.0f, innerR * 2.0f);
 
-    // Grey (Cadet Blue) track arc
+    // Cadet Blue full track arc
     {
       juce::Path track;
       track.addCentredArc(cx, cy, outerR, outerR, 0.0f, startAngle, endAngle, true);
@@ -82,25 +87,33 @@ public:
                                                juce::PathStrokeType::rounded));
     }
 
-    // Dark knob body (NAM_1-ish, slightly lighter than bg)
-    g.setColour(juce::Colour(0xff211e25));
-    g.fillEllipse(cx - innerR, cy - innerR, innerR * 2.0f, innerR * 2.0f);
+    // 3D knob body — bitmap if loaded, flat ellipse as fallback
+    if (mKnobBg.isValid()) {
+      g.drawImage(mKnobBg, (int)(cx - innerR), (int)(cy - innerR),
+                  (int)(innerR * 2.0f), (int)(innerR * 2.0f), 0, 0,
+                  mKnobBg.getWidth(), mKnobBg.getHeight(), false);
+    } else {
+      g.setColour(juce::Colour(0xff211e25));
+      g.fillEllipse(cx - innerR, cy - innerR, innerR * 2.0f, innerR * 2.0f);
+      g.setColour(juce::Colour(0xff3a3542));
+      g.drawEllipse(cx - innerR, cy - innerR, innerR * 2.0f, innerR * 2.0f, 0.8f);
+    }
 
-    // Subtle rim highlight (NAM uses emboss)
-    g.setColour(juce::Colour(0xff3a3542));
-    g.drawEllipse(cx - innerR, cy - innerR, innerR * 2.0f, innerR * 2.0f, 0.8f);
-
-    // Azure indicator dot (NAM: 3px filled circle at pointer tip)
+    // Indicator dot — radial gradient: Azure@0%→Azure@80%→transparent@100%
     const float dotR = 3.0f;
-    const float dotDst = innerR * 0.55f; // mInnerPointerFrac = 0.55
+    const float dotDst = innerR * 0.55f;
     const float dotX = cx + dotDst * std::sin(curAngle);
     const float dotY = cy - dotDst * std::cos(curAngle);
 
-    // Drop shadow for dot
-    g.setColour(juce::Colours::black.withAlpha(0.5f));
-    g.fillEllipse(dotX - dotR + 0.5f, dotY - dotR + 0.5f, dotR * 2.0f, dotR * 2.0f);
-    g.setColour(NAMColours::BLUE);
+    juce::ColourGradient dotGrad(NAMColours::BLUE, dotX, dotY,
+                                 juce::Colours::transparentBlack,
+                                 dotX + dotR * 1.33f, dotY, true);
+    dotGrad.addColour(0.8, NAMColours::BLUE);
+    g.setGradientFill(dotGrad);
     g.fillEllipse(dotX - dotR, dotY - dotR, dotR * 2.0f, dotR * 2.0f);
+
+    g.setColour(juce::Colours::black.withAlpha(0.5f));
+    g.drawEllipse(dotX - dotR, dotY - dotR, dotR * 2.0f, dotR * 2.0f, 0.8f);
   }
 
   // -----------------------------------------------------------------------
@@ -270,4 +283,5 @@ public:
 
 private:
   juce::Font mRobotoFont;
+  juce::Image mKnobBg;
 };

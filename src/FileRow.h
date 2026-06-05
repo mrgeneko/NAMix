@@ -11,6 +11,7 @@
  */
 
 #pragma once
+#include <BinaryData.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <functional>
 
@@ -34,9 +35,10 @@ public:
   // clear button pressed
   std::function<void()> onClear;
 
-  explicit FileRow(const juce::String& placeholder)
-    : mPlaceholder(placeholder)
+  explicit FileRow(const juce::String &placeholder) : mPlaceholder(placeholder)
   {
+    mBg = juce::ImageCache::getFromMemory(BinaryData::FileBackground_png,
+                                          BinaryData::FileBackground_pngSize);
     mLoadButton.setButtonText("");
     mLoadButton.onClick = [this] { if (onOpenChooser) onOpenChooser(); };
     addAndMakeVisible(mLoadButton);
@@ -90,9 +92,12 @@ public:
 
   void paint(juce::Graphics& g) override
   {
-    // File row background — slightly lighter than NAM_1 main background,
-    // matching the fileBackgroundBitmap tint in the original.
-    g.fillAll(juce::Colour(0xff1a1720));
+    // Recessed background bitmap (glossy black, inset bevel — matching original)
+    if (mBg.isValid())
+      g.drawImage(mBg, 0, 0, getWidth(), getHeight(), 0, 0, mBg.getWidth(),
+                  mBg.getHeight(), false);
+    else
+      g.fillAll(juce::Colour(0xff1a1720));
 
     // Folder icon centred in the load button area
     const auto lb = mLoadButton.getBounds().toFloat();
@@ -169,6 +174,7 @@ private:
       });
   }
 
+  juce::Image            mBg;
   juce::String           mPlaceholder;
   juce::String           mExtension;
   juce::File             mCurrentFile;

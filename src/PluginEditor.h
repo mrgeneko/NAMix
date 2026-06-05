@@ -121,6 +121,9 @@ private:
   std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>
       mToneStackAttachment, mNoiseGateButtonAttachment;
 
+  juce::Image mBgImage;
+  juce::Image mLinesImage;
+
   std::unique_ptr<juce::MenuBarModel> mMenuBarModel;
   std::unique_ptr<juce::FileChooser> mFileChooser;
 
