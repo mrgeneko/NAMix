@@ -12,42 +12,41 @@
 
 #pragma once
 
+#include <BinaryData.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
-#include <BinaryData.h>
 
-#include "PluginProcessor.h"
-#include "GatewayLookAndFeel.h"
 #include "FileRow.h"
-#include "LevelMeter.h"
+#include "GatewayLookAndFeel.h"
 #include "GatewaySettingsPanel.h"
+#include "LevelMeter.h"
+#include "PluginProcessor.h"
 
 class GatewayAudioProcessorEditor : public juce::AudioProcessorEditor,
-                                    private juce::Timer
-{
+                                    private juce::Timer {
 public:
-  explicit GatewayAudioProcessorEditor(GatewayAudioProcessor&);
+  explicit GatewayAudioProcessorEditor(GatewayAudioProcessor &);
   ~GatewayAudioProcessorEditor() override;
 
-  void paint(juce::Graphics&) override;
+  void paint(juce::Graphics &) override;
   void resized() override;
 
 private:
   void timerCallback() override;
-  void setupKnob(juce::Slider& slider, juce::Label& label, const juce::String& name);
+  void setupKnob(juce::Slider &slider, juce::Label &label, const juce::String &name);
   void chooseModelFile();
   void chooseIRFile();
 
-  GatewayAudioProcessor& mProcessor;
-  GatewayLookAndFeel     mLookAndFeel;
+  GatewayAudioProcessor &mProcessor;
+  GatewayLookAndFeel mLookAndFeel;
 
   // Fonts loaded from embedded binary data (Michroma-Regular, Roboto-Regular)
   juce::Font mMichromaFont;
   juce::Font mRobotoFont;
 
   // File loading rows
-  FileRow    mModelRow { "Select model..." };
-  FileRow    mIRRow    { "Select IR..." };
+  FileRow mModelRow{"Select model..."};
+  FileRow mIRRow{"Select IR..."};
 
   // Level meters — input on the left, output on the right (matches original)
   LevelMeter mInputLevelMeter;
@@ -55,33 +54,33 @@ private:
 
   // Slim slider (next to NAM model row, matches original slimIconArea)
   juce::Slider mSlimSlider;
-  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
-    mSlimAttachment;
+  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mSlimAttachment;
 
   // Gear / settings
-  juce::TextButton      mGearButton;
-  GatewaySettingsPanel  mSettingsPanel;
+  juce::TextButton mGearButton;
+  GatewaySettingsPanel mSettingsPanel;
 
   // Knobs
   juce::Slider mInputGainSlider, mOutputGainSlider;
-  juce::Label  mInputGainLabel,  mOutputGainLabel;
+  juce::Label mInputGainLabel, mOutputGainLabel;
 
   juce::Slider mBassSlider, mMiddleSlider, mTrebleSlider;
-  juce::Label  mBassLabel,  mMiddleLabel,  mTrebleLabel;
-  juce::ToggleButton mToneStackButton { "EQ" };
+  juce::Label mBassLabel, mMiddleLabel, mTrebleLabel;
+  juce::ToggleButton mToneStackButton{"EQ"};
 
   juce::Slider mNoiseGateSlider;
-  juce::Label  mNoiseGateLabel;
-  juce::ToggleButton mNoiseGateButton { "Noise Gate" };
+  juce::Label mNoiseGateLabel;
+  juce::ToggleButton mNoiseGateButton{"Noise Gate"};
 
   // APVTS attachments
   std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
-    mInputGainAttachment, mOutputGainAttachment, mNoiseGateAttachment,
-    mBassAttachment, mMiddleAttachment, mTrebleAttachment;
+      mInputGainAttachment, mOutputGainAttachment, mNoiseGateAttachment, mBassAttachment,
+      mMiddleAttachment, mTrebleAttachment;
 
   std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>
-    mToneStackAttachment, mNoiseGateButtonAttachment;
+      mToneStackAttachment, mNoiseGateButtonAttachment;
 
+  std::unique_ptr<juce::MenuBarModel> mMenuBarModel;
   std::unique_ptr<juce::FileChooser> mFileChooser;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GatewayAudioProcessorEditor)

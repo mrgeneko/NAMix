@@ -69,7 +69,8 @@ juce_add_plugin(GatewayLinux
     COMPANY_NAME               "Steven Atkinson"
     PLUGIN_MANUFACTURER_CODE   GwLx
     PLUGIN_CODE                Gwlx
-    FORMATS                    VST3
+    FORMATS                    VST3 Standalone
+    NEEDS_STANDALONE           TRUE
     PRODUCT_NAME               "Gateway"
     IS_SYNTH                   FALSE
     NEEDS_MIDI_INPUT           FALSE
