@@ -56,11 +56,13 @@ public:
     // -----------------------------------------------------------------------
     // Left side — Input calibration (inputArea = (30, 80, 270, 180))
     // -----------------------------------------------------------------------
-    // Calibration level slider — centred in inputArea, value in dBu
-    // Displayed as a compact rotary + textbox so the user can drag or read it.
-    mInputCalibSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
-    mInputCalibSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 80, 20);
+    // Calibration level — editable text box matching original InputLevelControl
+    // (IEditableTextControl showing "12 dBu"). TextBoxLeft with full component
+    // width leaves 0px for the track, so only the text box is visible.
+    mInputCalibSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+    mInputCalibSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 87, 25);
     mInputCalibSlider.setNumDecimalPlacesToDisplay(1);
+    mInputCalibSlider.setTextValueSuffix(" dBu");
     mInputCalibSlider.setTooltip("Analog reference level in dBu corresponding "
                                  "to 0 dBFS in the host. Used for input calibration.");
     addAndMakeVisible(mInputCalibSlider);
@@ -109,6 +111,20 @@ public:
   void clearModelInfo() {
     mModelSampleRate = {};
     mHasModelInfo = false;
+    repaint();
+  }
+
+  void setOutputModeSupport(bool hasLoudness, bool hasOutputLevel) {
+    mOutputButtons[1].setButtonText(
+        hasLoudness ? "Normalized" : "Normalized [Not supported by model]");
+    mOutputButtons[2].setButtonText(
+        hasOutputLevel ? "Calibrated" : "Calibrated [Not supported by model]");
+    repaint();
+  }
+
+  void clearOutputModeSupport() {
+    mOutputButtons[1].setButtonText("Normalized");
+    mOutputButtons[2].setButtonText("Calibrated");
     repaint();
   }
 
@@ -200,7 +216,8 @@ public:
     // -----------------------------------------------------------------------
     // Rotary centred in left inputArea (30,80,270,180): centre x=165
     // Position it so textbox lines up near inputLevelArea y=175
-    mInputCalibSlider.setBounds(121, 100, 87, 90); // rotary 70px + 20px textbox
+    // inputLevelArea from original: (121, 175, 87, 25)
+    mInputCalibSlider.setBounds(121, 175, 87, 25);
 
     // "Calibrate Input" toggle in inputSwitchArea (121, 210, 87, 50)
     mCalibrateInputButton.setBounds(121, 210, 87, 50);

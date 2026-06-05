@@ -118,7 +118,8 @@ static juce::Rectangle<int> knobCell(int i) {
 // ============================================================
 
 GatewayAudioProcessorEditor::GatewayAudioProcessorEditor(GatewayAudioProcessor &p)
-    : AudioProcessorEditor(&p), mProcessor(p), mSettingsPanel(p.apvts) {
+    : AudioProcessorEditor(&p), mProcessor(p), mSettingsPanel(p.apvts),
+      mSlimOverlay(p.apvts, mLookAndFeel) {
   // Load embedded fonts (binary data from resources/fonts/)
   {
     auto michromaTypeface = juce::Typeface::createSystemTypefaceFor(
@@ -182,15 +183,29 @@ GatewayAudioProcessorEditor::GatewayAudioProcessorEditor(GatewayAudioProcessor &
   addAndMakeVisible(mToneStackButton);
   addAndMakeVisible(mNoiseGateButton);
 
-  // --- Slim slider ---
-  mSlimSlider.setSliderStyle(juce::Slider::LinearHorizontal);
-  mSlimSlider.setTextBoxStyle(juce::Slider::NoTextBox, true, 0, 0);
-  mSlimSlider.setTooltip("Model size (Slim). 0 = smallest/fastest, 1 = full quality."
-                         " Only applies to slimmable WaveNet models.");
-  addAndMakeVisible(mSlimSlider);
-  mSlimAttachment =
-      std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-          apvts, "slim", mSlimSlider);
+  // --- Slim icon button (NAMSquareButtonControl equivalent) ---
+  // Loads SlimmableIcon.svg from binary data and displays it as a clickable
+  // image. Hidden until a SlimmableModel is loaded. Clicking opens mSlimOverlay.
+  {
+    auto xml = juce::XmlDocument::parse(
+        juce::String(BinaryData::SlimmableIcon_svg, BinaryData::SlimmableIcon_svgSize));
+    if (xml != nullptr) {
+      auto drawable = juce::Drawable::createFromSVG(*xml);
+      mSlimButton.setImages(drawable.get());
+    }
+  }
+  mSlimButton.setTooltip("Adjust model size (Slim). Click to open the dial.");
+  mSlimButton.setVisible(false);
+  mSlimButton.onClick = [this] {
+    mSlimOverlay.setVisible(true);
+    mSlimOverlay.toFront(false);
+  };
+  addAndMakeVisible(mSlimButton);
+
+  // --- Slim overlay (dark backdrop + centred knob, initially hidden) ---
+  // Covers the full editor. Added last so it renders on top of everything.
+  mSlimOverlay.setVisible(false);
+  addChildComponent(mSlimOverlay);
 
   // --- Gear button (transparent, overlays drawn gear icon) ---
   mGearButton.setButtonText("");
@@ -213,18 +228,25 @@ GatewayAudioProcessorEditor::GatewayAudioProcessorEditor(GatewayAudioProcessor &
     if (mProcessor.loadModel(f)) {
       mModelRow.setLoadedFile(f, "nam");
       mSettingsPanel.setModelSampleRate(mProcessor.getSampleRate());
+      mSettingsPanel.setOutputModeSupport(mProcessor.getModelHasLoudness(),
+                                          mProcessor.getModelHasOutputLevel());
+      mSlimButton.setVisible(mProcessor.getModelIsSlimmable());
     }
   };
   mModelRow.onClear = [this] {
     mProcessor.clearModel();
     mModelRow.clearFile();
     mSettingsPanel.clearModelInfo();
+    mSettingsPanel.clearOutputModeSupport();
+    mSlimButton.setVisible(false);
+    mSlimOverlay.setVisible(false);
   };
   {
     const juce::String mp = mProcessor.getModelPath();
     if (mp.isNotEmpty()) {
       mModelRow.setLoadedFile(juce::File(mp), "nam");
       mSettingsPanel.setModelSampleRate(mProcessor.getSampleRate());
+      mSlimButton.setVisible(mProcessor.getModelIsSlimmable());
     }
   }
   addAndMakeVisible(mModelRow);
@@ -319,6 +341,7 @@ void GatewayAudioProcessorEditor::paint(juce::Graphics &g) {
   g.setColour(juce::Colours::white.withAlpha(0.07f));
   g.drawHorizontalLine(Layout::MODEL_Y - 10, (float)Layout::ROW_X,
                        (float)(Layout::ROW_X + Layout::ROW_W + Layout::SLIM_W + 10));
+  // Note: the slim button may extend past ROW_W; the line covers that area.
 }
 
 void GatewayAudioProcessorEditor::resized() {
@@ -381,10 +404,13 @@ void GatewayAudioProcessorEditor::resized() {
         midCell.withY(Layout::TOGGLE_Y).withHeight(Layout::TOGGLE_H));
   }
 
-  // Model row — 400px centred, slim slider in the 56px gap to the right
+  // Model row — 400px centred; slim icon button in the 56px gap to the right.
+  // Icon is 56×28px, vertically centred on the row (matching original slimIconArea).
   mModelRow.setBounds(Layout::ROW_X, Layout::MODEL_Y, Layout::ROW_W, Layout::ROW_H);
-  mSlimSlider.setBounds(Layout::SLIM_X, Layout::MODEL_Y + Layout::ROW_H / 2 - 7,
-                        Layout::SLIM_W, 14);
+  mSlimButton.setBounds(Layout::SLIM_X, Layout::MODEL_Y + (Layout::ROW_H - 28) / 2,
+                        Layout::SLIM_W, 28);
+  // Slim overlay covers the full editor (added on top in the child stack).
+  mSlimOverlay.setBounds(getLocalBounds());
 
   // IR row — same width and x as model row
   mIRRow.setBounds(Layout::ROW_X, Layout::IR_Y, Layout::ROW_W, Layout::ROW_H);
@@ -415,6 +441,9 @@ void GatewayAudioProcessorEditor::chooseModelFile() {
         if (result.existsAsFile() && mProcessor.loadModel(result)) {
           mModelRow.setLoadedFile(result, "nam");
           mSettingsPanel.setModelSampleRate(mProcessor.getSampleRate());
+          mSettingsPanel.setOutputModeSupport(mProcessor.getModelHasLoudness(),
+                                             mProcessor.getModelHasOutputLevel());
+          mSlimButton.setVisible(mProcessor.getModelIsSlimmable());
         }
       });
 }

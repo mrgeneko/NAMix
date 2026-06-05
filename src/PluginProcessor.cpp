@@ -51,6 +51,10 @@ public:
         mResampler(GetNamEncapsulatedSampleRate(mEncapsulated)) {
     if (mEncapsulated->HasLoudness())
       SetLoudness(mEncapsulated->GetLoudness());
+    if (mEncapsulated->HasInputLevel())
+      SetInputLevel(mEncapsulated->GetInputLevel());
+    if (mEncapsulated->HasOutputLevel())
+      SetOutputLevel(mEncapsulated->GetOutputLevel());
     Reset(externalSampleRate, 2048);
   }
 
@@ -78,6 +82,10 @@ public:
   }
 
   int GetLatency() const { return mResampler.GetLatency(); }
+
+  bool IsSlimmable() const {
+    return dynamic_cast<const nam::SlimmableModel *>(mEncapsulated.get()) != nullptr;
+  }
 
   // Applies slimmable size if the encapsulated model supports the interface.
   // Thread-safe, not real-time safe — call from the audio thread only.
@@ -226,11 +234,14 @@ void GatewayAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
     if (mModel) {
       mModelHasInputLevel.store(mModel->HasInputLevel(), std::memory_order_relaxed);
       mModelHasOutputLevel.store(mModel->HasOutputLevel(), std::memory_order_relaxed);
-      if (auto *r = dynamic_cast<ResamplingNAM *>(mModel.get()))
+      if (auto *r = dynamic_cast<ResamplingNAM *>(mModel.get())) {
         setLatencySamples(r->GetLatency());
+        mModelIsSlimmable.store(r->IsSlimmable(), std::memory_order_relaxed);
+      }
     } else {
       mModelHasInputLevel.store(false, std::memory_order_relaxed);
       mModelHasOutputLevel.store(false, std::memory_order_relaxed);
+      mModelIsSlimmable.store(false, std::memory_order_relaxed);
       setLatencySamples(0);
     }
   }
@@ -410,6 +421,13 @@ bool GatewayAudioProcessor::loadModel(const juce::File &file) {
 
     mPendingModel = std::move(wrapped);
     mModelPath = file.getFullPathName();
+    // Pre-set capability flags so the UI can read them as soon as loadModel()
+    // returns, without waiting for the next processBlock swap.
+    mModelHasInputLevel.store(mPendingModel->HasInputLevel(), std::memory_order_relaxed);
+    mModelHasOutputLevel.store(mPendingModel->HasOutputLevel(), std::memory_order_relaxed);
+    mModelHasLoudness.store(mPendingModel->HasLoudness(), std::memory_order_relaxed);
+    if (auto *r = dynamic_cast<ResamplingNAM *>(mPendingModel.get()))
+      mModelIsSlimmable.store(r->IsSlimmable(), std::memory_order_relaxed);
     mModelPending.store(true);
     return true;
   } catch (const std::exception &e) {
@@ -421,6 +439,10 @@ bool GatewayAudioProcessor::loadModel(const juce::File &file) {
 void GatewayAudioProcessor::clearModel() {
   mPendingModel.reset();
   mModelPath = {};
+  mModelHasInputLevel.store(false, std::memory_order_relaxed);
+  mModelHasOutputLevel.store(false, std::memory_order_relaxed);
+  mModelHasLoudness.store(false, std::memory_order_relaxed);
+  mModelIsSlimmable.store(false, std::memory_order_relaxed);
   mModelPending.store(true);
 }
 

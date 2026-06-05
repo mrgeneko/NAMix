@@ -116,6 +116,33 @@ public:
                         bool) override {
     const bool on = button.getToggleState();
     const auto b = button.getLocalBounds().toFloat();
+
+    // Radio group members (output mode) — circle + label, matching the
+    // original NAM IVRadioButtonControl with EVShape::Ellipse.
+    if (button.getRadioGroupId() > 0) {
+      // Circle sized to match original NAM IVRadioButtonControl (EVShape::Ellipse).
+      // Keep it small enough that "Calibrated [Not supported by model]" fits.
+      const float cx = 8.0f;
+      const float cy = b.getCentreY();
+      const float outerR = 5.0f;
+      const float innerR = 2.5f;
+      const auto ringCol = on ? NAMColours::BLUE : NAMColours::CADET.withAlpha(0.6f);
+      g.setColour(ringCol);
+      g.drawEllipse(cx - outerR, cy - outerR, outerR * 2.0f, outerR * 2.0f, 1.5f);
+      if (on) {
+        g.setColour(NAMColours::BLUE);
+        g.fillEllipse(cx - innerR, cy - innerR, innerR * 2.0f, innerR * 2.0f);
+      }
+      const float textX = cx + outerR + 5.0f;
+      g.setColour(NAMColours::FONT.withAlpha(on ? 1.0f : 0.65f));
+      g.setFont(mRobotoFont.withHeight(13.0f));
+      g.drawText(button.getButtonText(),
+                 juce::Rectangle<float>(textX, 0.0f, b.getWidth() - textX - 2.0f,
+                                        b.getHeight()),
+                 juce::Justification::centredLeft, true);
+      return;
+    }
+
     const bool wide = (b.getWidth() > 100.0f);
 
     constexpr float pw = 40.0f, ph = 22.0f;
@@ -182,6 +209,26 @@ public:
     g.setFont(mRobotoFont.withHeight(13.0f));
     g.drawText(button.getButtonText(), button.getLocalBounds(),
                juce::Justification::centred, false);
+  }
+
+  // -----------------------------------------------------------------------
+  // Label — slider text boxes get a dark rounded box; all others use default.
+  // The input calibration level uses LinearHorizontal with a full-width text
+  // box, matching the original NAM InputLevelControl (IEditableTextControl).
+  // -----------------------------------------------------------------------
+  void drawLabel(juce::Graphics &g, juce::Label &label) override {
+    auto *parentSlider = dynamic_cast<juce::Slider *>(label.getParentComponent());
+    if (parentSlider != nullptr &&
+        parentSlider->getSliderStyle() == juce::Slider::LinearHorizontal) {
+      g.setColour(juce::Colour(0xff241f28));
+      g.fillRoundedRectangle(label.getLocalBounds().toFloat().reduced(1.0f), 3.0f);
+      g.setColour(NAMColours::FONT);
+      g.setFont(mRobotoFont.withHeight(13.0f));
+      g.drawText(label.getText(), label.getLocalBounds(), juce::Justification::centred,
+                 true);
+    } else {
+      juce::LookAndFeel_V4::drawLabel(g, label);
+    }
   }
 
   // -----------------------------------------------------------------------

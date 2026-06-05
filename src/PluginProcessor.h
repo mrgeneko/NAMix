@@ -83,6 +83,12 @@ public:
   bool getModelHasOutputLevel() const {
     return mModelHasOutputLevel.load(std::memory_order_relaxed);
   }
+  bool getModelHasLoudness() const {
+    return mModelHasLoudness.load(std::memory_order_relaxed);
+  }
+  bool getModelIsSlimmable() const {
+    return mModelIsSlimmable.load(std::memory_order_relaxed);
+  }
 
   juce::AudioProcessorValueTreeState apvts;
 
@@ -130,6 +136,8 @@ private:
   // message thread to enable/disable UI controls.
   std::atomic<bool> mModelHasInputLevel{false};
   std::atomic<bool> mModelHasOutputLevel{false};
+  std::atomic<bool> mModelHasLoudness{false};
+  std::atomic<bool> mModelIsSlimmable{false};
 
   // Persisted file paths — stored in plugin state so DAW projects can reload.
   juce::String mModelPath;

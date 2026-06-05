@@ -60,6 +60,7 @@ target_compile_options(NamDsp PRIVATE -ffast-math -Wno-unused-parameter -fPIC)
 juce_add_binary_data(GatewayBinaryData SOURCES
     resources/fonts/Michroma-Regular.ttf
     resources/fonts/Roboto-Regular.ttf
+    resources/img/SlimmableIcon.svg
 )
 
 # ---------------------------------------------------------------------------
