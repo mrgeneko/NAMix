@@ -8,13 +8,14 @@ The original project is available at:
 The following components are used under the MIT Licence:
 
   NeuralAmpModelerPlugin
-  Copyright (C) 2022 Steven Atkinson
-
   NeuralAmpModelerCore
-  Copyright (C) 2022 Steven Atkinson
-
   AudioDSPTools
   Copyright (C) 2022 Steven Atkinson
+
+  This includes the DSP source code (ToneStack, architecture.hpp, NAM core,
+  AudioDSPTools) and the graphical assets embedded in this binary
+  (resources/img/Background.jpg, KnobBackground.png, MeterBackground.png,
+  FileBackground.png, InputLevelBackground.png, Lines.png, SlimmableIcon.svg).
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +34,32 @@ The following components are used under the MIT Licence:
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+The following font is used under the SIL Open Font Licence 1.1:
+
+  Michroma-Regular.ttf
+  Copyright (C) 2011 James Grieshaber (james@grieshaber.com)
+  with Reserved Font Name "Michroma"
+
+  The font software may be used, modified and distributed freely so long as
+  it is not sold by itself. The font, with or without modification, may not
+  be bundled, embedded, redistributed, or sold with any software under a
+  different licence without permission of the copyright holder.
+
+  Full licence text: https://openfontlicense.org
+
+-------------------------------------------------------------------------------
+
+The following font is used under the Apache Licence, Version 2.0:
+
+  Roboto-Regular.ttf
+  Copyright (C) 2011 Google Inc. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License"); you may not
+  use this file except in compliance with the License. You may obtain a copy
+  of the License at http://www.apache.org/licenses/LICENSE-2.0
 
 -------------------------------------------------------------------------------
 
