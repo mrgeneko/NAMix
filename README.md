@@ -12,6 +12,8 @@ See [LICENCE](https://github.com/rations/gateway-linux/blob/master/LICENCE) and
 [NOTICE](https://github.com/rations/gateway-linux/blob/master/NOTICE) for full
 details.
 
+![Gateway standalone](standalone.png)
+
 Gateway ships as two separate binaries:
 
 | Binary | Use |
