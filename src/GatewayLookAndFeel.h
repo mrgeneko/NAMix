@@ -85,9 +85,9 @@ public:
 
     // Ring bitmap at full outerR — semi-transparent ring blends over the arc
     if (mKnobBg.isValid()) {
-      g.drawImage(mKnobBg, (int)(cx - outerR), (int)(cy - outerR),
-                  (int)(outerR * 2.0f), (int)(outerR * 2.0f), 0, 0,
-                  mKnobBg.getWidth(), mKnobBg.getHeight(), false);
+      g.drawImage(mKnobBg, (int)(cx - outerR), (int)(cy - outerR), (int)(outerR * 2.0f),
+                  (int)(outerR * 2.0f), 0, 0, mKnobBg.getWidth(), mKnobBg.getHeight(),
+                  false);
     } else {
       g.setColour(juce::Colour(0xff211e25));
       g.fillEllipse(cx - innerR, cy - innerR, innerR * 2.0f, innerR * 2.0f);
@@ -96,15 +96,16 @@ public:
     }
 
     // Indicator dot in the transparent centre (< 60% radius = transparent hole)
-    // dotDst = innerR * 0.55 = outerR * 0.73 * 0.55 ≈ outerR * 0.40 → inside transparent zone
+    // dotDst = innerR * 0.55 = outerR * 0.73 * 0.55 ≈ outerR * 0.40 → inside transparent
+    // zone
     const float dotR = 3.0f;
     const float dotDst = innerR * 0.55f;
     const float dotX = cx + dotDst * std::sin(curAngle);
     const float dotY = cy - dotDst * std::cos(curAngle);
 
     juce::ColourGradient dotGrad(NAMColours::BLUE, dotX, dotY,
-                                 juce::Colours::transparentBlack,
-                                 dotX + dotR * 1.33f, dotY, true);
+                                 juce::Colours::transparentBlack, dotX + dotR * 1.33f,
+                                 dotY, true);
     dotGrad.addColour(0.8, NAMColours::BLUE);
     g.setGradientFill(dotGrad);
     g.fillEllipse(dotX - dotR, dotY - dotR, dotR * 2.0f, dotR * 2.0f);
@@ -146,10 +147,10 @@ public:
       const float textX = cx + outerR + 5.0f;
       g.setColour(NAMColours::FONT.withAlpha(on ? 1.0f : 0.65f));
       g.setFont(mRobotoFont.withHeight(13.0f));
-      g.drawText(button.getButtonText(),
-                 juce::Rectangle<float>(textX, 0.0f, b.getWidth() - textX - 2.0f,
-                                        b.getHeight()),
-                 juce::Justification::centredLeft, true);
+      g.drawText(
+          button.getButtonText(),
+          juce::Rectangle<float>(textX, 0.0f, b.getWidth() - textX - 2.0f, b.getHeight()),
+          juce::Justification::centredLeft, true);
       return;
     }
 

@@ -141,8 +141,8 @@ GatewayAudioProcessorEditor::GatewayAudioProcessorEditor(GatewayAudioProcessor &
 
   mBgImage = juce::ImageCache::getFromMemory(BinaryData::Background_jpg,
                                              BinaryData::Background_jpgSize);
-  mLinesImage = juce::ImageCache::getFromMemory(BinaryData::Lines_png,
-                                                BinaryData::Lines_pngSize);
+  mLinesImage =
+      juce::ImageCache::getFromMemory(BinaryData::Lines_png, BinaryData::Lines_pngSize);
 
   // In standalone mode: enable native OS title bar and attach a File/Help
   // menu bar just below it (DocumentWindow::setMenuBar positions it
@@ -307,16 +307,16 @@ void GatewayAudioProcessorEditor::timerCallback() {
 void GatewayAudioProcessorEditor::paint(juce::Graphics &g) {
   // Plugin background — use pre-rendered Background.jpg for depth/texture
   if (mBgImage.isValid())
-    g.drawImage(mBgImage, 0, 0, getWidth(), getHeight(), 0, 0,
-                mBgImage.getWidth(), mBgImage.getHeight(), false);
+    g.drawImage(mBgImage, 0, 0, getWidth(), getHeight(), 0, 0, mBgImage.getWidth(),
+                mBgImage.getHeight(), false);
   else
     g.fillAll(juce::Colour(0xff1d1a1f));
 
   // Lines texture overlay at low opacity
   if (mLinesImage.isValid()) {
     g.setOpacity(0.35f);
-    g.drawImage(mLinesImage, 0, 0, getWidth(), getHeight(), 0, 0,
-                mLinesImage.getWidth(), mLinesImage.getHeight(), false);
+    g.drawImage(mLinesImage, 0, 0, getWidth(), getHeight(), 0, 0, mLinesImage.getWidth(),
+                mLinesImage.getHeight(), false);
     g.setOpacity(1.0f);
   }
 
@@ -465,7 +465,7 @@ void GatewayAudioProcessorEditor::chooseModelFile() {
           mModelRow.setLoadedFile(result, "nam");
           mSettingsPanel.setModelSampleRate(mProcessor.getSampleRate());
           mSettingsPanel.setOutputModeSupport(mProcessor.getModelHasLoudness(),
-                                             mProcessor.getModelHasOutputLevel());
+                                              mProcessor.getModelHasOutputLevel());
           mSlimButton.setVisible(mProcessor.getModelIsSlimmable());
         }
       });

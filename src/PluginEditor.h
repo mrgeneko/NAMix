@@ -96,7 +96,6 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mAttachment;
   } mSlimOverlay;
 
-
   // Gear / settings
   juce::TextButton mGearButton;
   GatewaySettingsPanel mSettingsPanel;

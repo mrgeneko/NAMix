@@ -424,7 +424,8 @@ bool GatewayAudioProcessor::loadModel(const juce::File &file) {
     // Pre-set capability flags so the UI can read them as soon as loadModel()
     // returns, without waiting for the next processBlock swap.
     mModelHasInputLevel.store(mPendingModel->HasInputLevel(), std::memory_order_relaxed);
-    mModelHasOutputLevel.store(mPendingModel->HasOutputLevel(), std::memory_order_relaxed);
+    mModelHasOutputLevel.store(mPendingModel->HasOutputLevel(),
+                               std::memory_order_relaxed);
     mModelHasLoudness.store(mPendingModel->HasLoudness(), std::memory_order_relaxed);
     if (auto *r = dynamic_cast<ResamplingNAM *>(mPendingModel.get()))
       mModelIsSlimmable.store(r->IsSlimmable(), std::memory_order_relaxed);

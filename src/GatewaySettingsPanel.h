@@ -77,11 +77,10 @@ public:
     mInputCalibLabel.setTooltip("Analog reference level in dBu RMS corresponding "
                                 "to 0 dBFS peak in the host.");
     mInputCalibLabel.onTextChange = [this] {
-      const float newVal = juce::jlimit(
-          -60.0f, 60.0f,
-          mInputCalibLabel.getText()
-              .upToFirstOccurrenceOf(" ", false, false)
-              .getFloatValue());
+      const float newVal = juce::jlimit(-60.0f, 60.0f,
+                                        mInputCalibLabel.getText()
+                                            .upToFirstOccurrenceOf(" ", false, false)
+                                            .getFloatValue());
       if (auto *param = mApvts.getParameter("inputCalibrationLevel"))
         param->setValueNotifyingHost(
             juce::NormalisableRange<float>(-60.0f, 60.0f, 0.1f).convertTo0to1(newVal));
@@ -145,8 +144,8 @@ public:
   }
 
   void setOutputModeSupport(bool hasLoudness, bool hasOutputLevel) {
-    mOutputButtons[1].setButtonText(
-        hasLoudness ? "Normalized" : "Normalized [Not supported by model]");
+    mOutputButtons[1].setButtonText(hasLoudness ? "Normalized"
+                                                : "Normalized [Not supported by model]");
     mOutputButtons[2].setButtonText(
         hasOutputLevel ? "Calibrated" : "Calibrated [Not supported by model]");
     repaint();
