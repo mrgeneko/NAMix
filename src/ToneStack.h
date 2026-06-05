@@ -9,24 +9,21 @@
 
 #pragma once
 
-#include <string>
-#include "../AudioDSPTools/dsp/dsp.h"
 #include "../AudioDSPTools/dsp/RecursiveLinearFilter.h"
+#include "../AudioDSPTools/dsp/dsp.h"
+#include <string>
 
-namespace dsp
-{
-namespace tone_stack
-{
-class AbstractToneStack
-{
+namespace dsp {
+namespace tone_stack {
+class AbstractToneStack {
 public:
   AbstractToneStack() = default;
   virtual ~AbstractToneStack() = default;
   // Compute in the real-time loop
-  virtual DSP_SAMPLE** Process(DSP_SAMPLE** inputs, const int numChannels, const int numFrames) = 0;
+  virtual DSP_SAMPLE **Process(DSP_SAMPLE **inputs, const int numChannels,
+                               const int numFrames) = 0;
   // Any preparation. Call from Reset() in the plugin
-  virtual void Reset(const double sampleRate, const int maxBlockSize)
-  {
+  virtual void Reset(const double sampleRate, const int maxBlockSize) {
     mSampleRate = sampleRate;
     mMaxBlockSize = maxBlockSize;
   };
@@ -40,18 +37,17 @@ protected:
   int mMaxBlockSize = 0;
 };
 
-class BasicNamToneStack : public AbstractToneStack
-{
+class BasicNamToneStack : public AbstractToneStack {
 public:
-  BasicNamToneStack()
-  {
+  BasicNamToneStack() {
     SetParam("bass", 5.0);
     SetParam("middle", 5.0);
     SetParam("treble", 5.0);
   };
   ~BasicNamToneStack() = default;
 
-  DSP_SAMPLE** Process(DSP_SAMPLE** inputs, const int numChannels, const int numFrames) override;
+  DSP_SAMPLE **Process(DSP_SAMPLE **inputs, const int numChannels,
+                       const int numFrames) override;
   void Reset(const double sampleRate, const int maxBlockSize) override;
   // :param val: Assumed to be between 0 and 10, 5 is "noon"
   void SetParam(const std::string name, const double val) override;

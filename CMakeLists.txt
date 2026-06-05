@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(gateway-linux VERSION 0.1.0 LANGUAGES CXX C)
+project(gateway-linux VERSION 0.2.0 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -60,6 +60,13 @@ target_compile_options(NamDsp PRIVATE -ffast-math -Wno-unused-parameter -fPIC)
 juce_add_binary_data(GatewayBinaryData SOURCES
     resources/fonts/Michroma-Regular.ttf
     resources/fonts/Roboto-Regular.ttf
+    resources/img/SlimmableIcon.svg
+    resources/img/Background.jpg
+    resources/img/KnobBackground.png
+    resources/img/MeterBackground.png
+    resources/img/FileBackground.png
+    resources/img/InputLevelBackground.png
+    resources/img/Lines.png
 )
 
 # ---------------------------------------------------------------------------
@@ -69,7 +76,8 @@ juce_add_plugin(GatewayLinux
     COMPANY_NAME               "Steven Atkinson"
     PLUGIN_MANUFACTURER_CODE   GwLx
     PLUGIN_CODE                Gwlx
-    FORMATS                    VST3
+    FORMATS                    VST3 Standalone
+    NEEDS_STANDALONE           TRUE
     PRODUCT_NAME               "Gateway"
     IS_SYNTH                   FALSE
     NEEDS_MIDI_INPUT           FALSE

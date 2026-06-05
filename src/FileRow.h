@@ -11,8 +11,9 @@
  */
 
 #pragma once
-#include <juce_gui_basics/juce_gui_basics.h>
+#include <BinaryData.h>
 #include <functional>
+#include <juce_gui_basics/juce_gui_basics.h>
 
 // A styled file-loading row with directory navigation.
 //
@@ -24,8 +25,7 @@
 // Clicking the filename label shows a popup menu of all compatible files in
 // the same directory as the currently loaded file.
 // < / > cycle through those files in alphabetical order.
-class FileRow : public juce::Component
-{
+class FileRow : public juce::Component {
 public:
   // folder icon → tell editor to show file chooser dialog
   std::function<void()> onOpenChooser;
@@ -34,11 +34,14 @@ public:
   // clear button pressed
   std::function<void()> onClear;
 
-  explicit FileRow(const juce::String& placeholder)
-    : mPlaceholder(placeholder)
-  {
+  explicit FileRow(const juce::String &placeholder) : mPlaceholder(placeholder) {
+    mBg = juce::ImageCache::getFromMemory(BinaryData::FileBackground_png,
+                                          BinaryData::FileBackground_pngSize);
     mLoadButton.setButtonText("");
-    mLoadButton.onClick = [this] { if (onOpenChooser) onOpenChooser(); };
+    mLoadButton.onClick = [this] {
+      if (onOpenChooser)
+        onOpenChooser();
+    };
     addAndMakeVisible(mLoadButton);
 
     mPrevButton.onClick = [this] { navigate(-1); };
@@ -49,7 +52,10 @@ public:
 
     // × U+00D7
     mClearButton.setButtonText(juce::String(juce::CharPointer_UTF8("\xc3\x97")));
-    mClearButton.onClick = [this] { if (onClear) onClear(); };
+    mClearButton.onClick = [this] {
+      if (onClear)
+        onClear();
+    };
     addAndMakeVisible(mClearButton);
 
     mFilenameLabel.setText(placeholder, juce::dontSendNotification);
@@ -63,10 +69,9 @@ public:
   // Called by the editor after a successful file load.
   // Scans the parent directory for all files with the same extension and
   // sets up the prev/next navigation state.
-  void setLoadedFile(const juce::File& f, const juce::String& ext)
-  {
+  void setLoadedFile(const juce::File &f, const juce::String &ext) {
     mCurrentFile = f;
-    mExtension   = ext;
+    mExtension = ext;
     scanDirectory();
     mCurrentIndex = mFiles.indexOf(f);
     if (mCurrentIndex < 0 && !mFiles.isEmpty())
@@ -77,10 +82,9 @@ public:
   }
 
   // Resets all state — called by the editor after clearing the file.
-  void clearFile()
-  {
+  void clearFile() {
     mCurrentFile = juce::File{};
-    mExtension   = {};
+    mExtension = {};
     mFiles.clear();
     mCurrentIndex = -1;
     mFilenameLabel.setText(mPlaceholder, juce::dontSendNotification);
@@ -88,11 +92,13 @@ public:
                              juce::Colour(0xffa2b2bf).withAlpha(0.7f));
   }
 
-  void paint(juce::Graphics& g) override
-  {
-    // File row background — slightly lighter than NAM_1 main background,
-    // matching the fileBackgroundBitmap tint in the original.
-    g.fillAll(juce::Colour(0xff1a1720));
+  void paint(juce::Graphics &g) override {
+    // Recessed background bitmap (glossy black, inset bevel — matching original)
+    if (mBg.isValid())
+      g.drawImage(mBg, 0, 0, getWidth(), getHeight(), 0, 0, mBg.getWidth(),
+                  mBg.getHeight(), false);
+    else
+      g.fillAll(juce::Colour(0xff1a1720));
 
     // Folder icon centred in the load button area
     const auto lb = mLoadButton.getBounds().toFloat();
@@ -103,12 +109,11 @@ public:
     g.setColour(juce::Colour(0xffa2b2bf).withAlpha(0.75f));
     juce::Path folder;
     folder.addRectangle(cx - iw * 0.5f, cy - ih * 0.5f + 2.5f, iw, ih - 2.5f);
-    folder.addRectangle(cx - iw * 0.5f, cy - ih * 0.5f,         iw * 0.44f, 3.5f);
+    folder.addRectangle(cx - iw * 0.5f, cy - ih * 0.5f, iw * 0.44f, 3.5f);
     g.fillPath(folder);
   }
 
-  void resized() override
-  {
+  void resized() override {
     auto r = getLocalBounds().reduced(4, 3);
     mLoadButton.setBounds(r.removeFromLeft(26));
     r.removeFromLeft(3);
@@ -121,60 +126,59 @@ public:
   }
 
   // Mouse click on the label area opens the popup menu.
-  void mouseDown(const juce::MouseEvent& e) override
-  {
+  void mouseDown(const juce::MouseEvent &e) override {
     if (mFilenameLabel.getBounds().contains(e.getPosition()))
       showPopupMenu();
   }
 
 private:
-  void scanDirectory()
-  {
+  void scanDirectory() {
     mFiles.clear();
     if (!mCurrentFile.existsAsFile() || mExtension.isEmpty())
       return;
 
-    mCurrentFile.getParentDirectory().findChildFiles(
-      mFiles, juce::File::findFiles, false, "*." + mExtension);
+    mCurrentFile.getParentDirectory().findChildFiles(mFiles, juce::File::findFiles, false,
+                                                     "*." + mExtension);
 
-    std::sort(mFiles.begin(), mFiles.end(),
-              [](const juce::File& a, const juce::File& b) {
-                return a.getFileName().compareIgnoreCase(b.getFileName()) < 0;
-              });
+    std::sort(mFiles.begin(), mFiles.end(), [](const juce::File &a, const juce::File &b) {
+      return a.getFileName().compareIgnoreCase(b.getFileName()) < 0;
+    });
   }
 
-  void navigate(int delta)
-  {
-    if (mFiles.isEmpty()) return;
+  void navigate(int delta) {
+    if (mFiles.isEmpty())
+      return;
     const int n = mFiles.size();
     mCurrentIndex = ((mCurrentIndex + delta) % n + n) % n;
-    if (onLoad) onLoad(mFiles[mCurrentIndex]);
+    if (onLoad)
+      onLoad(mFiles[mCurrentIndex]);
   }
 
-  void showPopupMenu()
-  {
-    if (mFiles.isEmpty()) return;
+  void showPopupMenu() {
+    if (mFiles.isEmpty())
+      return;
 
     juce::PopupMenu menu;
     for (int i = 0; i < mFiles.size(); ++i)
       menu.addItem(i + 1, mFiles[i].getFileName(), true, i == mCurrentIndex);
 
     menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(this),
-      [this](int result) {
-        if (result > 0 && result - 1 < mFiles.size())
-        {
-          mCurrentIndex = result - 1;
-          if (onLoad) onLoad(mFiles[mCurrentIndex]);
-        }
-      });
+                       [this](int result) {
+                         if (result > 0 && result - 1 < mFiles.size()) {
+                           mCurrentIndex = result - 1;
+                           if (onLoad)
+                             onLoad(mFiles[mCurrentIndex]);
+                         }
+                       });
   }
 
-  juce::String           mPlaceholder;
-  juce::String           mExtension;
-  juce::File             mCurrentFile;
+  juce::Image mBg;
+  juce::String mPlaceholder;
+  juce::String mExtension;
+  juce::File mCurrentFile;
   juce::Array<juce::File> mFiles;
-  int                    mCurrentIndex = -1;
+  int mCurrentIndex = -1;
 
-  juce::TextButton mLoadButton, mPrevButton{ "<" }, mNextButton{ ">" }, mClearButton;
-  juce::Label      mFilenameLabel;
+  juce::TextButton mLoadButton, mPrevButton{"<"}, mNextButton{">"}, mClearButton;
+  juce::Label mFilenameLabel;
 };

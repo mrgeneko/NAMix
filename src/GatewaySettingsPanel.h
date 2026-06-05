@@ -11,9 +11,9 @@
  */
 
 #pragma once
+#include <BinaryData.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
-#include <BinaryData.h>
 
 // Full-size overlay panel (600x400) matching NAMSettingsPageControl exactly.
 //
@@ -31,55 +31,77 @@
 //     about         (300, 282, 280,  75)  right — 5 lines white Roboto 14px
 //   closeButton     (545,  35,  20,  20)
 
-class GatewaySettingsPanel : public juce::Component
-{
+class GatewaySettingsPanel : public juce::Component {
 public:
   std::function<void()> onClose;
 
-  explicit GatewaySettingsPanel(juce::AudioProcessorValueTreeState& apvts)
-    : mApvts(apvts)
-  {
+  explicit GatewaySettingsPanel(juce::AudioProcessorValueTreeState &apvts)
+      : mApvts(apvts) {
     auto michromaTypeface = juce::Typeface::createSystemTypefaceFor(
-      BinaryData::MichromaRegular_ttf, BinaryData::MichromaRegular_ttfSize);
+        BinaryData::MichromaRegular_ttf, BinaryData::MichromaRegular_ttfSize);
     mMichromaFont = juce::Font(michromaTypeface).withHeight(30.0f);
 
     auto robotoTypeface = juce::Typeface::createSystemTypefaceFor(
-      BinaryData::RobotoRegular_ttf, BinaryData::RobotoRegular_ttfSize);
+        BinaryData::RobotoRegular_ttf, BinaryData::RobotoRegular_ttfSize);
     mRobotoFont = juce::Font(robotoTypeface).withHeight(14.0f);
+
+    mInputLevelBg = juce::ImageCache::getFromMemory(
+        BinaryData::InputLevelBackground_png, BinaryData::InputLevelBackground_pngSize);
 
     // Close button — CornerButtonArea: (545, 35, 20, 20)
     mCloseButton.setButtonText(juce::String(juce::CharPointer_UTF8("\xc3\x97")));
-    mCloseButton.onClick = [this] { if (onClose) onClose(); };
+    mCloseButton.onClick = [this] {
+      if (onClose)
+        onClose();
+    };
     addAndMakeVisible(mCloseButton);
 
     // -----------------------------------------------------------------------
     // Left side — Input calibration (inputArea = (30, 80, 270, 180))
     // -----------------------------------------------------------------------
-    // Calibration level slider — centred in inputArea, value in dBu
-    // Displayed as a compact rotary + textbox so the user can drag or read it.
-    mInputCalibSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
-    mInputCalibSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 80, 20);
-    mInputCalibSlider.setNumDecimalPlacesToDisplay(1);
-    mInputCalibSlider.setTooltip("Analog reference level in dBu corresponding "
-                                 "to 0 dBFS in the host. Used for input calibration.");
-    addAndMakeVisible(mInputCalibSlider);
-    mInputCalibAttachment =
-      std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        apvts, "inputCalibrationLevel", mInputCalibSlider);
+    // Matches original InputLevelControl (IEditableTextControl): a plain
+    // editable label showing "12.0 dBu". The bitmap background is drawn in
+    // paint(). Clicking opens a text editor; on commit the value is clamped
+    // to [-60, 60] and written back to the APVTS parameter.
+    {
+      const float val = apvts.getRawParameterValue("inputCalibrationLevel")->load();
+      mInputCalibLabel.setText(juce::String(val, 1) + " dBu", juce::dontSendNotification);
+    }
+    mInputCalibLabel.setEditable(true);
+    mInputCalibLabel.setJustificationType(juce::Justification::centred);
+    mInputCalibLabel.setColour(juce::Label::textColourId, NAMColours::FONT);
+    mInputCalibLabel.setColour(juce::Label::backgroundColourId,
+                               juce::Colours::transparentBlack);
+    mInputCalibLabel.setColour(juce::Label::outlineWhenEditingColourId,
+                               NAMColours::BLUE.withAlpha(0.5f));
+    mInputCalibLabel.setTooltip("Analog reference level in dBu RMS corresponding "
+                                "to 0 dBFS peak in the host.");
+    mInputCalibLabel.onTextChange = [this] {
+      const float newVal = juce::jlimit(-60.0f, 60.0f,
+                                        mInputCalibLabel.getText()
+                                            .upToFirstOccurrenceOf(" ", false, false)
+                                            .getFloatValue());
+      if (auto *param = mApvts.getParameter("inputCalibrationLevel"))
+        param->setValueNotifyingHost(
+            juce::NormalisableRange<float>(-60.0f, 60.0f, 0.1f).convertTo0to1(newVal));
+      const float actual = mApvts.getRawParameterValue("inputCalibrationLevel")->load();
+      mInputCalibLabel.setText(juce::String(actual, 1) + " dBu",
+                               juce::dontSendNotification);
+    };
+    addAndMakeVisible(mInputCalibLabel);
 
     // "Calibrate Input" pill toggle — inputSwitchArea (121, 210, 87, 50)
     mCalibrateInputButton.setButtonText("Calibrate Input");
     addAndMakeVisible(mCalibrateInputButton);
     mCalibrateInputAttachment =
-      std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
-        apvts, "calibrateInput", mCalibrateInputButton);
+        std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
+            apvts, "calibrateInput", mCalibrateInputButton);
 
     // -----------------------------------------------------------------------
     // Right side — Output mode (outputRadioArea = (300, 177, 270, 83))
     // -----------------------------------------------------------------------
-    const char* outputLabels[3] = { "Raw", "Normalized", "Calibrated" };
-    for (int i = 0; i < 3; ++i)
-    {
+    const char *outputLabels[3] = {"Raw", "Normalized", "Calibrated"};
+    for (int i = 0; i < 3; ++i) {
       mOutputButtons[i].setButtonText(outputLabels[i]);
       mOutputButtons[i].setRadioGroupId(101, juce::dontSendNotification);
       const int idx = i;
@@ -94,47 +116,68 @@ public:
   // carries input level metadata (HasInputLevel). Mirrors original behaviour
   // where kCtrlTagCalibrateInput and kCtrlTagInputCalibrationLevel are disabled
   // when !mModel->HasInputLevel().
-  void setInputCalibrationEnabled(bool enabled)
-  {
-    mInputCalibSlider.setEnabled(enabled);
+  void setInputCalibrationEnabled(bool enabled) {
+    mInputCalibLabel.setEnabled(enabled);
     mCalibrateInputButton.setEnabled(enabled);
   }
 
+  // Called from the editor's timer to keep the label in sync with the parameter
+  // (e.g. after a preset load). Skips the update while the user is typing.
+  void refreshCalibrationDisplay() {
+    if (!mInputCalibLabel.isBeingEdited()) {
+      const float val = mApvts.getRawParameterValue("inputCalibrationLevel")->load();
+      mInputCalibLabel.setText(juce::String(val, 1) + " dBu", juce::dontSendNotification);
+    }
+  }
+
   // Called by the editor after a model loads.
-  void setModelSampleRate(double sampleRate)
-  {
+  void setModelSampleRate(double sampleRate) {
     mModelSampleRate = juce::String(static_cast<int>(sampleRate)) + " Hz";
     mHasModelInfo = true;
     repaint();
   }
 
-  void clearModelInfo()
-  {
+  void clearModelInfo() {
     mModelSampleRate = {};
     mHasModelInfo = false;
     repaint();
   }
 
-  void refreshFromState()
-  {
-    const int mode = static_cast<int>(
-      mApvts.getRawParameterValue("outputMode")->load());
+  void setOutputModeSupport(bool hasLoudness, bool hasOutputLevel) {
+    mOutputButtons[1].setButtonText(hasLoudness ? "Normalized"
+                                                : "Normalized [Not supported by model]");
+    mOutputButtons[2].setButtonText(
+        hasOutputLevel ? "Calibrated" : "Calibrated [Not supported by model]");
+    repaint();
+  }
+
+  void clearOutputModeSupport() {
+    mOutputButtons[1].setButtonText("Normalized");
+    mOutputButtons[2].setButtonText("Calibrated");
+    repaint();
+  }
+
+  void refreshFromState() {
+    const int mode = static_cast<int>(mApvts.getRawParameterValue("outputMode")->load());
     for (int i = 0; i < 3; ++i)
       mOutputButtons[i].setToggleState(i == mode, juce::dontSendNotification);
   }
 
-  void visibilityChanged() override { if (isVisible()) refreshFromState(); }
+  void visibilityChanged() override {
+    if (isVisible()) {
+      refreshFromState();
+      refreshCalibrationDisplay();
+    }
+  }
 
-  void paint(juce::Graphics& g) override
-  {
+  void paint(juce::Graphics &g) override {
     // Opaque NAM_1 background — covers the entire plugin window
     g.fillAll(juce::Colour(0xff1d1a1f));
 
     // Title — Michroma-Regular 30px, white, centred in titleArea (30,30,540,50)
     g.setFont(mMichromaFont);
     g.setColour(juce::Colours::white);
-    g.drawText("SETTINGS",
-               juce::Rectangle<int>(30, 30, 540, 50),
+    g.drawText("SETTINGS", juce::Rectangle<int>(30, 30, 540, 50),
                juce::Justification::centred);
 
     // -----------------------------------------------------------------------
@@ -142,15 +185,19 @@ public:
     // -----------------------------------------------------------------------
     g.setFont(mRobotoFont.withHeight(11.0f));
     g.setColour(juce::Colour(0xffa2b2bf)); // NAM_3 Cadet Blue for section headers
-    g.drawText("INPUT CALIBRATION",
-               juce::Rectangle<int>(30, 85, 270, 14),
+    g.drawText("INPUT CALIBRATION", juce::Rectangle<int>(30, 85, 270, 14),
                juce::Justification::centredLeft);
+
+    // Recessed background bitmap behind the dBu input level text box
+    // inputLevelArea: (121, 175, 87, 25)
+    if (mInputLevelBg.isValid())
+      g.drawImage(mInputLevelBg, 121, 175, 87, 25, 0, 0, mInputLevelBg.getWidth(),
+                  mInputLevelBg.getHeight(), false);
 
     // -----------------------------------------------------------------------
     // Right-side header (above output mode radio buttons)
     // -----------------------------------------------------------------------
-    g.drawText("OUTPUT MODE",
-               juce::Rectangle<int>(300, 160, 270, 14),
+    g.drawText("OUTPUT MODE", juce::Rectangle<int>(300, 160, 270, 14),
                juce::Justification::centredLeft);
 
     // Separator between middle section and bottom
@@ -164,12 +211,10 @@ public:
     constexpr int lh = 15;
 
     // Left half — model info (mirrors ModelInfoControl, 4 lines x 15px)
-    if (mHasModelInfo)
-    {
+    if (mHasModelInfo) {
       g.setFont(mRobotoFont.withHeight(14.0f));
       g.setColour(juce::Colours::white);
-      g.drawText("Model information:",
-                 juce::Rectangle<int>(20, 282 + 0 * lh, 280, lh),
+      g.drawText("Model information:", juce::Rectangle<int>(20, 282 + 0 * lh, 280, lh),
                  juce::Justification::centredLeft);
       g.drawText("Sample rate: " + mModelSampleRate,
                  juce::Rectangle<int>(20, 282 + 1 * lh, 280, lh),
@@ -179,29 +224,23 @@ public:
     // Right half — about (mirrors AboutControl, 5 lines x 15px)
     // Original lines: plugin URL, "By Steven Atkinson", version+arch+api,
     //                 contributors URL, third-party notices
-    const juce::String dash = juce::String::charToString(0x2014); // em-dash U+2014
     g.setFont(mRobotoFont.withHeight(14.0f));
     g.setColour(juce::Colours::white);
-    g.drawText("GATEWAY",
-               juce::Rectangle<int>(300, 282 + 0 * lh, 280, lh),
+    g.drawText("GATEWAY", juce::Rectangle<int>(300, 282 + 0 * lh, 280, lh),
                juce::Justification::centredLeft);
-    g.drawText("Based on NeuralAmpModeler",
+    g.drawText("Based on Gateway by Steven Atkinson",
                juce::Rectangle<int>(300, 282 + 1 * lh, 280, lh),
                juce::Justification::centredLeft);
-    g.drawText("Version 0.1  " + dash + "  GPL v3",
+    g.drawText("MIT licence - GPL v3 required by JUCE",
                juce::Rectangle<int>(300, 282 + 2 * lh, 280, lh),
                juce::Justification::centredLeft);
-    g.drawText("Original by Steven Atkinson (MIT)",
-               juce::Rectangle<int>(300, 282 + 3 * lh, 280, lh),
-               juce::Justification::centredLeft);
     g.setColour(juce::Colours::white.withAlpha(0.55f));
-    g.drawText("github.com/sdatkinson/NeuralAmpModelerPlugin",
-               juce::Rectangle<int>(300, 282 + 4 * lh, 280, lh),
+    g.drawText("github.com/rations/gateway-linux",
+               juce::Rectangle<int>(300, 282 + 3 * lh, 280, lh),
                juce::Justification::centredLeft);
   }
 
-  void resized() override
-  {
+  void resized() override {
     // Close button — CornerButtonArea from original: (545, 35, 20, 20)
     mCloseButton.setBounds(545, 35, 20, 20);
 
@@ -214,7 +253,8 @@ public:
     // -----------------------------------------------------------------------
     // Rotary centred in left inputArea (30,80,270,180): centre x=165
     // Position it so textbox lines up near inputLevelArea y=175
-    mInputCalibSlider.setBounds(121, 100, 87, 90); // rotary 70px + 20px textbox
+    // inputLevelArea from original: (121, 175, 87, 25)
+    mInputCalibLabel.setBounds(121, 175, 87, 25);
 
     // "Calibrate Input" toggle in inputSwitchArea (121, 210, 87, 50)
     mCalibrateInputButton.setBounds(121, 210, 87, 50);
@@ -230,27 +270,25 @@ public:
   }
 
 private:
-  void setOutputMode(int index)
-  {
-    if (auto* param = mApvts.getParameter("outputMode"))
+  void setOutputMode(int index) {
+    if (auto *param = mApvts.getParameter("outputMode"))
       param->setValueNotifyingHost((float)index / 2.0f);
   }
 
-  juce::AudioProcessorValueTreeState& mApvts;
-  juce::Font         mMichromaFont;
-  juce::Font         mRobotoFont;
-  juce::String       mModelSampleRate;
-  bool               mHasModelInfo = false;
+  juce::AudioProcessorValueTreeState &mApvts;
+  juce::Font mMichromaFont;
+  juce::Font mRobotoFont;
+  juce::Image mInputLevelBg;
+  juce::String mModelSampleRate;
+  bool mHasModelInfo = false;
 
-  juce::TextButton   mCloseButton;
+  juce::TextButton mCloseButton;
 
   // Left side — input calibration
-  juce::Slider       mInputCalibSlider;
+  juce::Label mInputCalibLabel;
   juce::ToggleButton mCalibrateInputButton;
-  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
-    mInputCalibAttachment;
   std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>
-    mCalibrateInputAttachment;
+      mCalibrateInputAttachment;
 
   // Right side — output mode
   juce::ToggleButton mOutputButtons[3];
