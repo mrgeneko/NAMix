@@ -48,49 +48,45 @@ public:
   }
 
   // -----------------------------------------------------------------------
-  // Rotary knob — matches NAMKnobControl draw order exactly:
-  //   1. shadow ring behind everything
-  //   2. Cadet Blue full track arc
-  //   3. Azure value arc
-  //   4. KnobBackground.png bitmap (pre-rendered 3D body, MIT-licensed)
-  //   5. Radial-gradient Azure dot at pointer tip + black outline shadow
+  // Rotary knob — matches NAMKnobControl draw order:
+  //
+  // KnobBackground.png is a 92x92 RGBA donut/ring shape:
+  //   centre 0–60% radius: alpha=0 (transparent hole)
+  //   ring  65–100% radius: semi-transparent (~42% alpha)
+  //
+  // Draw order (mirrors original):
+  //   1. Drop shadow behind the ring bitmap
+  //   2. Azure value arc at innerR (73%) — only filled portion, no gray track
+  //   3. Ring bitmap at outerR — semi-transparent pixels blend the arc at the rim
+  //   4. Gradient dot in the transparent centre
   // -----------------------------------------------------------------------
   void drawRotarySlider(juce::Graphics &g, int x, int y, int width, int height,
                         float sliderPos, float startAngle, float endAngle,
                         juce::Slider &) override {
     const float cx = x + width * 0.5f;
     const float cy = y + height * 0.5f;
-    const float outerR = std::min(width, height) * 0.5f - 4.0f;
-    const float innerR = outerR * 0.73f;
+    const float outerR = std::min(width, height) * 0.5f - 2.0f;
+    const float innerR = outerR * 0.73f; // arc radius — matches widgetRadius in original
     const float arcW = 3.5f;
     const float curAngle = startAngle + sliderPos * (endAngle - startAngle);
 
-    // Shadow ring — dark halo behind the knob body
-    g.setColour(juce::Colours::black.withAlpha(0.5f));
-    g.fillEllipse(cx - innerR + 1.5f, cy - innerR + 1.5f, innerR * 2.0f, innerR * 2.0f);
+    // Drop shadow — offset dark ellipse at outerR gives the raised-knob look
+    g.setColour(juce::Colours::black.withAlpha(0.45f));
+    g.fillEllipse(cx - outerR + 2.0f, cy - outerR + 2.0f, outerR * 2.0f, outerR * 2.0f);
 
-    // Cadet Blue full track arc
-    {
-      juce::Path track;
-      track.addCentredArc(cx, cy, outerR, outerR, 0.0f, startAngle, endAngle, true);
-      g.setColour(NAMColours::CADET.withAlpha(0.4f));
-      g.strokePath(track, juce::PathStrokeType(arcW, juce::PathStrokeType::curved,
-                                               juce::PathStrokeType::rounded));
-    }
-
-    // Azure value arc
+    // Azure value arc at innerR — no gray background track (matches original)
     if (sliderPos > 0.0f) {
       juce::Path value;
-      value.addCentredArc(cx, cy, outerR, outerR, 0.0f, startAngle, curAngle, true);
+      value.addCentredArc(cx, cy, innerR, innerR, 0.0f, startAngle, curAngle, true);
       g.setColour(NAMColours::BLUE);
       g.strokePath(value, juce::PathStrokeType(arcW, juce::PathStrokeType::curved,
                                                juce::PathStrokeType::rounded));
     }
 
-    // 3D knob body — bitmap if loaded, flat ellipse as fallback
+    // Ring bitmap at full outerR — semi-transparent ring blends over the arc
     if (mKnobBg.isValid()) {
-      g.drawImage(mKnobBg, (int)(cx - innerR), (int)(cy - innerR),
-                  (int)(innerR * 2.0f), (int)(innerR * 2.0f), 0, 0,
+      g.drawImage(mKnobBg, (int)(cx - outerR), (int)(cy - outerR),
+                  (int)(outerR * 2.0f), (int)(outerR * 2.0f), 0, 0,
                   mKnobBg.getWidth(), mKnobBg.getHeight(), false);
     } else {
       g.setColour(juce::Colour(0xff211e25));
@@ -99,7 +95,8 @@ public:
       g.drawEllipse(cx - innerR, cy - innerR, innerR * 2.0f, innerR * 2.0f, 0.8f);
     }
 
-    // Indicator dot — radial gradient: Azure@0%→Azure@80%→transparent@100%
+    // Indicator dot in the transparent centre (< 60% radius = transparent hole)
+    // dotDst = innerR * 0.55 = outerR * 0.73 * 0.55 ≈ outerR * 0.40 → inside transparent zone
     const float dotR = 3.0f;
     const float dotDst = innerR * 0.55f;
     const float dotX = cx + dotDst * std::sin(curAngle);
