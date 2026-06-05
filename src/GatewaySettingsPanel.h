@@ -59,19 +59,37 @@ public:
     // -----------------------------------------------------------------------
     // Left side — Input calibration (inputArea = (30, 80, 270, 180))
     // -----------------------------------------------------------------------
-    // Calibration level — editable text box matching original InputLevelControl
-    // (IEditableTextControl showing "12 dBu"). TextBoxLeft with full component
-    // width leaves 0px for the track, so only the text box is visible.
-    mInputCalibSlider.setSliderStyle(juce::Slider::LinearHorizontal);
-    mInputCalibSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 87, 25);
-    mInputCalibSlider.setNumDecimalPlacesToDisplay(1);
-    mInputCalibSlider.setTextValueSuffix(" dBu");
-    mInputCalibSlider.setTooltip("Analog reference level in dBu corresponding "
-                                 "to 0 dBFS in the host. Used for input calibration.");
-    addAndMakeVisible(mInputCalibSlider);
-    mInputCalibAttachment =
-        std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-            apvts, "inputCalibrationLevel", mInputCalibSlider);
+    // Matches original InputLevelControl (IEditableTextControl): a plain
+    // editable label showing "12.0 dBu". The bitmap background is drawn in
+    // paint(). Clicking opens a text editor; on commit the value is clamped
+    // to [-60, 60] and written back to the APVTS parameter.
+    {
+      const float val = apvts.getRawParameterValue("inputCalibrationLevel")->load();
+      mInputCalibLabel.setText(juce::String(val, 1) + " dBu", juce::dontSendNotification);
+    }
+    mInputCalibLabel.setEditable(true);
+    mInputCalibLabel.setJustificationType(juce::Justification::centred);
+    mInputCalibLabel.setColour(juce::Label::textColourId, NAMColours::FONT);
+    mInputCalibLabel.setColour(juce::Label::backgroundColourId,
+                               juce::Colours::transparentBlack);
+    mInputCalibLabel.setColour(juce::Label::outlineWhenEditingColourId,
+                               NAMColours::BLUE.withAlpha(0.5f));
+    mInputCalibLabel.setTooltip("Analog reference level in dBu RMS corresponding "
+                                "to 0 dBFS peak in the host.");
+    mInputCalibLabel.onTextChange = [this] {
+      const float newVal = juce::jlimit(
+          -60.0f, 60.0f,
+          mInputCalibLabel.getText()
+              .upToFirstOccurrenceOf(" ", false, false)
+              .getFloatValue());
+      if (auto *param = mApvts.getParameter("inputCalibrationLevel"))
+        param->setValueNotifyingHost(
+            juce::NormalisableRange<float>(-60.0f, 60.0f, 0.1f).convertTo0to1(newVal));
+      const float actual = mApvts.getRawParameterValue("inputCalibrationLevel")->load();
+      mInputCalibLabel.setText(juce::String(actual, 1) + " dBu",
+                               juce::dontSendNotification);
+    };
+    addAndMakeVisible(mInputCalibLabel);
 
     // "Calibrate Input" pill toggle — inputSwitchArea (121, 210, 87, 50)
     mCalibrateInputButton.setButtonText("Calibrate Input");
@@ -100,8 +118,17 @@ public:
   // where kCtrlTagCalibrateInput and kCtrlTagInputCalibrationLevel are disabled
   // when !mModel->HasInputLevel().
   void setInputCalibrationEnabled(bool enabled) {
-    mInputCalibSlider.setEnabled(enabled);
+    mInputCalibLabel.setEnabled(enabled);
     mCalibrateInputButton.setEnabled(enabled);
+  }
+
+  // Called from the editor's timer to keep the label in sync with the parameter
+  // (e.g. after a preset load). Skips the update while the user is typing.
+  void refreshCalibrationDisplay() {
+    if (!mInputCalibLabel.isBeingEdited()) {
+      const float val = mApvts.getRawParameterValue("inputCalibrationLevel")->load();
+      mInputCalibLabel.setText(juce::String(val, 1) + " dBu", juce::dontSendNotification);
+    }
   }
 
   // Called by the editor after a model loads.
@@ -138,8 +165,10 @@ public:
   }
 
   void visibilityChanged() override {
-    if (isVisible())
+    if (isVisible()) {
       refreshFromState();
+      refreshCalibrationDisplay();
+    }
   }
 
   void paint(juce::Graphics &g) override {
@@ -226,7 +255,7 @@ public:
     // Rotary centred in left inputArea (30,80,270,180): centre x=165
     // Position it so textbox lines up near inputLevelArea y=175
     // inputLevelArea from original: (121, 175, 87, 25)
-    mInputCalibSlider.setBounds(121, 175, 87, 25);
+    mInputCalibLabel.setBounds(121, 175, 87, 25);
 
     // "Calibrate Input" toggle in inputSwitchArea (121, 210, 87, 50)
     mCalibrateInputButton.setBounds(121, 210, 87, 50);
@@ -257,10 +286,8 @@ private:
   juce::TextButton mCloseButton;
 
   // Left side — input calibration
-  juce::Slider mInputCalibSlider;
+  juce::Label mInputCalibLabel;
   juce::ToggleButton mCalibrateInputButton;
-  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
-      mInputCalibAttachment;
   std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>
       mCalibrateInputAttachment;
 

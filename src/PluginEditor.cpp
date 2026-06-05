@@ -87,9 +87,10 @@ static constexpr int ROW_H = 30;                        // fileHeight
 static constexpr int MODEL_Y = CT + CH - 2 * ROW_H - 1; // 309
 static constexpr int IR_Y = MODEL_Y + 38;               // 347 (irYOffset)
 
-// Slim icon/slider — 6px right of model row
-static constexpr int SLIM_X = ROW_X + ROW_W + 6; // 506
-static constexpr int SLIM_W = 56;                // 2*28px
+// Slim icon — centred in the 60px gap between the model row right edge (500)
+// and the output meter left edge (560). SLIM_W=40 → 10px margin on each side.
+static constexpr int SLIM_W = 40;
+static constexpr int SLIM_H = 20;
 
 // Meters — outside contentArea, symmetric on left and right.
 // Input: contentArea.GetFromLeft(30).GetHShifted(-20).GetMidVPadded(100).GetVShifted(-25)
@@ -97,6 +98,10 @@ static constexpr int SLIM_W = 56;                // 2*28px
 // contentArea.GetFromRight(30).GetHShifted(20).GetMidVPadded(100).GetVShifted(-25)
 static constexpr int METER_INPUT_X = 10;
 static constexpr int METER_X = 560;
+
+// 510 was too left (6px gap), 530 was too right (30px gap). 520 splits the difference:
+// 20px from model row right edge (x=500), 40px from plugin right edge.
+static constexpr int SLIM_X = ROW_X + ROW_W + 20; // 520
 static constexpr int METER_Y = 75;
 static constexpr int METER_W = 30;
 static constexpr int METER_H = 200;
@@ -296,6 +301,7 @@ void GatewayAudioProcessorEditor::timerCallback() {
   mInputLevelMeter.setLevel(mProcessor.getInputLevel());
   mLevelMeter.setLevel(mProcessor.getOutputLevel());
   mSettingsPanel.setInputCalibrationEnabled(mProcessor.getModelHasInputLevel());
+  mSettingsPanel.refreshCalibrationDisplay();
 }
 
 void GatewayAudioProcessorEditor::paint(juce::Graphics &g) {
@@ -424,9 +430,9 @@ void GatewayAudioProcessorEditor::resized() {
   // Model row — 400px centred; slim icon button in the 56px gap to the right.
   // Icon is 56×28px, vertically centred on the row (matching original slimIconArea).
   mModelRow.setBounds(Layout::ROW_X, Layout::MODEL_Y, Layout::ROW_W, Layout::ROW_H);
-  mSlimButton.setBounds(Layout::SLIM_X, Layout::MODEL_Y + (Layout::ROW_H - 28) / 2,
-                        Layout::SLIM_W, 28);
-  // Slim overlay covers the full editor (added on top in the child stack).
+  mSlimButton.setBounds(Layout::SLIM_X,
+                        Layout::MODEL_Y + (Layout::ROW_H - Layout::SLIM_H) / 2,
+                        Layout::SLIM_W, Layout::SLIM_H);
   mSlimOverlay.setBounds(getLocalBounds());
 
   // IR row — same width and x as model row
