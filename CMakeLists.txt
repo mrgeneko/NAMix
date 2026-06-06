@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(gateway-linux VERSION 0.2.0 LANGUAGES CXX C)
+project(gateway-linux VERSION 0.3.0 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -51,7 +51,7 @@ target_include_directories(NamDsp PUBLIC
     eigen
 )
 
-target_compile_options(NamDsp PRIVATE -ffast-math -Wno-unused-parameter -fPIC)
+target_compile_options(NamDsp PRIVATE -ffast-math -Wno-unused-parameter -fPIC $<$<VERSION_LESS:$<CXX_COMPILER_VERSION>,13>:-fpermissive>)
 
 # ---------------------------------------------------------------------------
 # Embedded font resources (Michroma-Regular and Roboto-Regular, copied from
@@ -144,4 +144,5 @@ target_compile_options(GatewayLinux PRIVATE
     -ffast-math
     -Wall
     -Wno-unused-parameter
+    $<$<VERSION_LESS:$<CXX_COMPILER_VERSION>,13>:-fpermissive>
 )
