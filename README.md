@@ -25,37 +25,47 @@ Gateway ships as two separate binaries:
 
 ## System requirements
 
-Gateway requires **glibc 2.38 or later**. This is present in:
+Gateway requires **glibc 2.35 or later**. This is present in:
 
-- Devuan 6 (excalibur) / Debian 13 (trixie) or newer
-- Ubuntu 24.04 LTS or newer
-- Arch Linux (rolling)
-- Fedora 39 or newer
+| Distro | Version |
+|---|---|
+| Ubuntu | 22.04 LTS or newer |
+| Debian | 12 (Bookworm) or newer |
+| Devuan | 5 (Daedalus) or newer |
+| Fedora | 36 or newer |
+| Linux Mint | 21 or newer |
+| Pop!_OS | 22.04 or newer |
+| MX Linux | 23 or newer |
+| Arch Linux | rolling |
+| Manjaro | rolling |
+| openSUSE Tumbleweed | rolling |
+| Void | rolling |
 
-Ubuntu 22.04 LTS and Debian 12 (bookworm) ship glibc 2.35/2.36 and will not
-load these binaries. Users on those systems should build from source (see below).
+Ubuntu 20.04, Debian 11 (Bullseye), RHEL/CentOS 9, and openSUSE Leap 15.x
+ship glibc 2.31–2.34 and will not load these binaries. Users on those systems
+should build from source (see below).
 
 ---
 
 ## Installing the pre-built release
 
-Download `Gateway-0.2.0-linux-x86_64.tar.gz` from the
+Download `Gateway-0.3.0-linux-x86_64.tar.gz` from the
 [Releases page](https://github.com/rations/gateway-linux/releases).
 
 Extract the archive:
 
 ```bash
-tar -xzf Gateway-0.2.0-linux-x86_64.tar.gz
+tar -xzf Gateway-0.3.0-linux-x86_64.tar.gz
 ```
 
-This creates a `Gateway-0.2.0/` directory containing both binaries. Install
+This creates a `Gateway-0.3.0/` directory containing both binaries. Install
 whichever you need:
 
 **VST3 plugin** — copy into your user VST3 folder:
 
 ```bash
 mkdir -p ~/.vst3
-cp -r Gateway-0.2.0/Gateway.vst3 ~/.vst3/
+cp -r Gateway-0.3.0/Gateway.vst3 ~/.vst3/
 ```
 
 The plugin will appear as **Gateway** in any VST3-capable DAW. No other
@@ -64,10 +74,10 @@ dependencies need to be installed.
 **Standalone application** — run directly from the extracted directory:
 
 ```bash
-./Gateway-0.2.0/Gateway
+./Gateway-0.3.0/Gateway
 ```
 
-On first launch, Gateway opens an audio settings
+On first launch, Gateway open audio settings
 dialog where you select your ALSA or JACK device and sample rate. These
 settings are saved and restored on subsequent launches. The standalone window
 includes a **File → Preferences** menu to reopen the audio settings at any
@@ -79,7 +89,7 @@ automatically when you close the window.
 To uninstall:
 
 ```bash
-rm -rf ~/.vst3/Gateway.vst3 ~/bin/Gateway
+rm -rf ~/.vst3/Gateway.vst3 ~/Gateway-0.3.0
 ```
 
 ---
@@ -117,7 +127,7 @@ build/GatewayLinux_artefacts/Release/Standalone/Gateway
 ```
 
 To build and package a release archive (produces
-`Gateway-0.2.0-linux-x86_64.tar.gz` in the repo root):
+`Gateway-0.3.0-linux-x86_64.tar.gz` in the repo root):
 
 ```bash
 bash scripts/makedist-linux.sh
