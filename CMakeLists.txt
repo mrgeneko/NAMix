@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(gateway-linux VERSION 0.3.0 LANGUAGES CXX C)
+project(namix-linux VERSION 0.4.0 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -57,7 +57,7 @@ target_compile_options(NamDsp PRIVATE -ffast-math -Wno-unused-parameter -fPIC $<
 # Embedded font resources (Michroma-Regular and Roboto-Regular, copied from
 # the original NeuralAmpModelerPlugin resources under MIT licence).
 # ---------------------------------------------------------------------------
-juce_add_binary_data(GatewayBinaryData SOURCES
+juce_add_binary_data(NAMixBinaryData SOURCES
     resources/fonts/Michroma-Regular.ttf
     resources/fonts/Roboto-Regular.ttf
     resources/img/SlimmableIcon.svg
@@ -72,13 +72,14 @@ juce_add_binary_data(GatewayBinaryData SOURCES
 # ---------------------------------------------------------------------------
 # Plugin definition
 # ---------------------------------------------------------------------------
-juce_add_plugin(GatewayLinux
+juce_add_plugin(NAMixLinux
     COMPANY_NAME               "Steven Atkinson"
-    PLUGIN_MANUFACTURER_CODE   GwLx
-    PLUGIN_CODE                Gwlx
+    BUNDLE_ID                  "com.stevenatkinson.namix"
+    PLUGIN_MANUFACTURER_CODE   NMIX
+    PLUGIN_CODE                Nmix
     FORMATS                    VST3 Standalone
     NEEDS_STANDALONE           TRUE
-    PRODUCT_NAME               "Gateway"
+    PRODUCT_NAME               "NAMix"
     IS_SYNTH                   FALSE
     NEEDS_MIDI_INPUT           FALSE
     NEEDS_MIDI_OUTPUT          FALSE
@@ -91,7 +92,7 @@ juce_add_plugin(GatewayLinux
 # ---------------------------------------------------------------------------
 # Sources
 # ---------------------------------------------------------------------------
-target_sources(GatewayLinux PRIVATE
+target_sources(NAMixLinux PRIVATE
     src/PluginProcessor.cpp
     src/PluginEditor.cpp
     src/ToneStack.cpp
@@ -100,7 +101,7 @@ target_sources(GatewayLinux PRIVATE
 # ---------------------------------------------------------------------------
 # Compile definitions
 # ---------------------------------------------------------------------------
-target_compile_definitions(GatewayLinux
+target_compile_definitions(NAMixLinux
     PUBLIC
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
@@ -108,26 +109,26 @@ target_compile_definitions(GatewayLinux
         NAM_ENABLE_A2_FAST
 )
 
-# NamDsp's PUBLIC include paths flow into GatewayLinux automatically via the
+# NamDsp's PUBLIC include paths flow into NAMixLinux automatically via the
 # target_link_libraries below, so no need to repeat them here.
 
 # ---------------------------------------------------------------------------
 # Include paths
 # ---------------------------------------------------------------------------
-target_include_directories(GatewayLinux PRIVATE
+target_include_directories(NAMixLinux PRIVATE
     src
 )
 
 # ---------------------------------------------------------------------------
 # Link libraries
 # ---------------------------------------------------------------------------
-target_link_libraries(GatewayLinux
+target_link_libraries(NAMixLinux
     PRIVATE
         # --whole-archive ensures every .o in NamDsp is linked into the VST3
         # .so, so that static-initialiser registrations (WaveNet, LSTM, etc.)
         # always execute at plugin load time regardless of LTO / --as-needed.
         -Wl,--whole-archive NamDsp -Wl,--no-whole-archive
-        GatewayBinaryData
+        NAMixBinaryData
         juce::juce_audio_utils
         juce::juce_opengl
         stdc++fs
@@ -140,7 +141,7 @@ target_link_libraries(GatewayLinux
 # ---------------------------------------------------------------------------
 # Compiler flags
 # ---------------------------------------------------------------------------
-target_compile_options(GatewayLinux PRIVATE
+target_compile_options(NAMixLinux PRIVATE
     -ffast-math
     -Wall
     -Wno-unused-parameter

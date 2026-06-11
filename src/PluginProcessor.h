@@ -1,5 +1,5 @@
 /*
- * Gateway Linux VST3 Plugin
+ * NAMix Linux VST3 Plugin
  * Copyright (C) 2026 rations
  *
  * Based on NeuralAmpModelerPlugin by Steven Atkinson (MIT Licence).
@@ -30,11 +30,11 @@
 #include "ToneStack.h"
 #include "dsp.h"
 
-class GatewayAudioProcessor : public juce::AudioProcessor,
+class NAMixAudioProcessor : public juce::AudioProcessor,
                               public juce::AudioProcessorValueTreeState::Listener {
 public:
-  GatewayAudioProcessor();
-  ~GatewayAudioProcessor() override;
+  NAMixAudioProcessor();
+  ~NAMixAudioProcessor() override;
 
   void prepareToPlay(double sampleRate, int samplesPerBlock) override;
   void releaseResources() override;
@@ -143,5 +143,5 @@ private:
   juce::String mModelPath;
   juce::String mIRPath;
 
-  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GatewayAudioProcessor)
+  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NAMixAudioProcessor)
 };
