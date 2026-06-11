@@ -1,5 +1,5 @@
 /*
- * Gateway Linux VST3 Plugin
+ * NAMix Linux VST3 Plugin
  * Copyright (C) 2026 rations
  *
  * Based on NeuralAmpModelerPlugin by Steven Atkinson (MIT Licence).
