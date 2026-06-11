@@ -1,5 +1,5 @@
 /*
- * Gateway Linux VST3 Plugin
+ * NAMix Linux VST3 Plugin
  * Copyright (C) 2026 rations
  *
  * Based on NeuralAmpModelerPlugin by Steven Atkinson (MIT Licence).
@@ -19,7 +19,7 @@ juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter();
 #include <juce_audio_plugin_client/Standalone/juce_StandaloneFilterWindow.h>
 
 namespace {
-class GatewayMenuModel : public juce::MenuBarModel {
+class NAMixMenuModel : public juce::MenuBarModel {
 public:
   juce::StringArray getMenuBarNames() override { return {"File", "Help"}; }
 
@@ -30,7 +30,7 @@ public:
       m.addSeparator();
       m.addItem(2, "Quit");
     } else {
-      m.addItem(3, "About Gateway");
+      m.addItem(3, "About NAMix");
     }
     return m;
   }
@@ -43,11 +43,11 @@ public:
       juce::JUCEApplication::getInstance()->systemRequestedQuit();
     } else if (id == 3) {
       juce::AlertWindow::showMessageBoxAsync(
-          juce::MessageBoxIconType::InfoIcon, "About Gateway",
-          "Gateway Linux\n\n"
-          "Based on Gateway by Steven Atkinson (MIT licence)\n\n"
+          juce::MessageBoxIconType::InfoIcon, "About NAMix",
+          "NAMix\n\n"
+          "Based on NeuralAmpModelerPlugin by Steven Atkinson (MIT licence)\n\n"
           "GPL v3 licence required by JUCE\n\n"
-          "https://github.com/rations/gateway-linux");
+          "https://github.com/rations/namix-linux");
     }
   }
 };
@@ -122,7 +122,7 @@ static juce::Rectangle<int> knobCell(int i) {
 
 // ============================================================
 
-GatewayAudioProcessorEditor::GatewayAudioProcessorEditor(GatewayAudioProcessor &p)
+NAMixAudioProcessorEditor::NAMixAudioProcessorEditor(NAMixAudioProcessor &p)
     : AudioProcessorEditor(&p), mProcessor(p), mSettingsPanel(p.apvts),
       mSlimOverlay(p.apvts, mLookAndFeel) {
   // Load embedded fonts (binary data from resources/fonts/)
@@ -150,7 +150,7 @@ GatewayAudioProcessorEditor::GatewayAudioProcessorEditor(GatewayAudioProcessor &
   juce::MessageManager::callAsync([this] {
     if (auto *dw = findParentComponentOfClass<juce::DocumentWindow>()) {
       dw->setUsingNativeTitleBar(true);
-      mMenuBarModel = std::make_unique<GatewayMenuModel>();
+      mMenuBarModel = std::make_unique<NAMixMenuModel>();
       dw->setMenuBar(mMenuBarModel.get());
     }
   });
@@ -288,7 +288,7 @@ GatewayAudioProcessorEditor::GatewayAudioProcessorEditor(GatewayAudioProcessor &
   startTimerHz(30);
 }
 
-GatewayAudioProcessorEditor::~GatewayAudioProcessorEditor() {
+NAMixAudioProcessorEditor::~NAMixAudioProcessorEditor() {
   if (mMenuBarModel) {
     if (auto *dw = findParentComponentOfClass<juce::DocumentWindow>())
       dw->setMenuBar(nullptr);
@@ -297,14 +297,14 @@ GatewayAudioProcessorEditor::~GatewayAudioProcessorEditor() {
   setLookAndFeel(nullptr);
 }
 
-void GatewayAudioProcessorEditor::timerCallback() {
+void NAMixAudioProcessorEditor::timerCallback() {
   mInputLevelMeter.setLevel(mProcessor.getInputLevel());
   mLevelMeter.setLevel(mProcessor.getOutputLevel());
   mSettingsPanel.setInputCalibrationEnabled(mProcessor.getModelHasInputLevel());
   mSettingsPanel.refreshCalibrationDisplay();
 }
 
-void GatewayAudioProcessorEditor::paint(juce::Graphics &g) {
+void NAMixAudioProcessorEditor::paint(juce::Graphics &g) {
   // Plugin background — use pre-rendered Background.jpg for depth/texture
   if (mBgImage.isValid())
     g.drawImage(mBgImage, 0, 0, getWidth(), getHeight(), 0, 0, mBgImage.getWidth(),
@@ -323,7 +323,7 @@ void GatewayAudioProcessorEditor::paint(juce::Graphics &g) {
   // Title — Michroma-Regular 30px, white, centred in contentArea.GetFromTop(50)
   g.setColour(juce::Colour(0xfff2f2f2));
   g.setFont(mMichromaFont.withHeight(30.0f));
-  g.drawText("GATEWAY", juce::Rectangle<int>(Layout::CL, Layout::CT, Layout::CW, 50),
+  g.drawText("NAMix", juce::Rectangle<int>(Layout::CL, Layout::CT, Layout::CW, 50),
              juce::Justification::centred);
 
   // Gear icon — drawn in the settingsButtonArea corner (centred in 22×22)
@@ -367,7 +367,7 @@ void GatewayAudioProcessorEditor::paint(juce::Graphics &g) {
   // Note: the slim button may extend past ROW_W; the line covers that area.
 }
 
-void GatewayAudioProcessorEditor::resized() {
+void NAMixAudioProcessorEditor::resized() {
   // Input meter — outside contentArea on the left (matches inputMeterArea)
   mInputLevelMeter.setBounds(Layout::METER_INPUT_X, Layout::METER_Y, Layout::METER_W,
                              Layout::METER_H);
@@ -439,7 +439,7 @@ void GatewayAudioProcessorEditor::resized() {
   mIRRow.setBounds(Layout::ROW_X, Layout::IR_Y, Layout::ROW_W, Layout::ROW_H);
 }
 
-void GatewayAudioProcessorEditor::setupKnob(juce::Slider &slider, juce::Label &label,
+void NAMixAudioProcessorEditor::setupKnob(juce::Slider &slider, juce::Label &label,
                                             const juce::String &name) {
   label.setText(name, juce::dontSendNotification);
   label.setJustificationType(juce::Justification::centred);
@@ -452,7 +452,7 @@ void GatewayAudioProcessorEditor::setupKnob(juce::Slider &slider, juce::Label &l
   addAndMakeVisible(slider);
 }
 
-void GatewayAudioProcessorEditor::chooseModelFile() {
+void NAMixAudioProcessorEditor::chooseModelFile() {
   mFileChooser = std::make_unique<juce::FileChooser>(
       "Load NAM Model", juce::File::getSpecialLocation(juce::File::userHomeDirectory),
       "*.nam");
@@ -471,7 +471,7 @@ void GatewayAudioProcessorEditor::chooseModelFile() {
       });
 }
 
-void GatewayAudioProcessorEditor::chooseIRFile() {
+void NAMixAudioProcessorEditor::chooseIRFile() {
   mFileChooser = std::make_unique<juce::FileChooser>(
       "Load Impulse Response",
       juce::File::getSpecialLocation(juce::File::userHomeDirectory), "*.wav");

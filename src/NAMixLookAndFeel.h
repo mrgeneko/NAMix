@@ -1,5 +1,5 @@
 /*
- * Gateway Linux VST3 Plugin
+ * NAMix Linux VST3 Plugin
  * Copyright (C) 2026 rations
  *
  * Based on NeuralAmpModelerPlugin by Steven Atkinson (MIT Licence).
@@ -29,9 +29,9 @@ static const juce::Colour FONT{0xfff2f2f2};
 static const juce::Colour FILE_BG{0xff1a1720};
 } // namespace NAMColours
 
-class GatewayLookAndFeel : public juce::LookAndFeel_V4 {
+class NAMixLookAndFeel : public juce::LookAndFeel_V4 {
 public:
-  GatewayLookAndFeel() {
+  NAMixLookAndFeel() {
     auto robotoTypeface = juce::Typeface::createSystemTypefaceFor(
         BinaryData::RobotoRegular_ttf, BinaryData::RobotoRegular_ttfSize);
     mRobotoFont = juce::Font(robotoTypeface);
