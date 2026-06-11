@@ -3,7 +3,7 @@
  * Copyright (C) Steven Atkinson. Original licence: MIT.
  * See NOTICE for the full MIT licence text.
  *
- * This file is distributed as part of Gateway Linux VST3 Plugin under the
+ * This file is distributed as part of NAMix Linux VST3 Plugin under the
  * GNU General Public License, version 3, as required by JUCE.
  */
 
