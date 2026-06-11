@@ -49,23 +49,23 @@ should build from source (see below).
 
 ## Installing the pre-built release
 
-Download `NAMix-0.3.0-linux-x86_64.tar.gz` from the
+Download `NAMix-0.4.0-linux-x86_64.tar.gz` from the
 [Releases page](https://github.com/rations/namix-linux/releases).
 
 Extract the archive:
 
 ```bash
-tar -xzf NAMix-0.3.0-linux-x86_64.tar.gz
+tar -xzf NAMix-0.4.0-linux-x86_64.tar.gz
 ```
 
-This creates a `NAMix-0.3.0/` directory containing both binaries. Install
+This creates a `NAMix-0.4.0/` directory containing both binaries. Install
 whichever you need:
 
 **VST3 plugin** — copy into your user VST3 folder:
 
 ```bash
 mkdir -p ~/.vst3
-cp -r NAMix-0.3.0/NAMix.vst3 ~/.vst3/
+cp -r NAMix-0.4.0/NAMix.vst3 ~/.vst3/
 ```
 
 The plugin will appear as **NAMix** in any VST3-capable DAW. No other
@@ -74,7 +74,7 @@ dependencies need to be installed.
 **Standalone application** — run directly from the extracted directory:
 
 ```bash
-./NAMix-0.3.0/NAMix
+./NAMix-0.4.0/NAMix
 ```
 
 On first launch, NAMix open audio settings
@@ -89,7 +89,7 @@ automatically when you close the window.
 To uninstall:
 
 ```bash
-rm -rf ~/.vst3/NAMix.vst3 ~/NAMix-0.3.0
+rm -rf ~/.vst3/NAMix.vst3 ~/NAMix-0.4.0
 ```
 
 ---
