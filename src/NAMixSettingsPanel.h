@@ -1,5 +1,5 @@
 /*
- * Gateway Linux VST3 Plugin
+ * NAMix Linux VST3 Plugin
  * Copyright (C) 2026 rations
  *
  * Based on NeuralAmpModelerPlugin by Steven Atkinson (MIT Licence).
@@ -31,11 +31,11 @@
 //     about         (300, 282, 280,  75)  right — 5 lines white Roboto 14px
 //   closeButton     (545,  35,  20,  20)
 
-class GatewaySettingsPanel : public juce::Component {
+class NAMixSettingsPanel : public juce::Component {
 public:
   std::function<void()> onClose;
 
-  explicit GatewaySettingsPanel(juce::AudioProcessorValueTreeState &apvts)
+  explicit NAMixSettingsPanel(juce::AudioProcessorValueTreeState &apvts)
       : mApvts(apvts) {
     auto michromaTypeface = juce::Typeface::createSystemTypefaceFor(
         BinaryData::MichromaRegular_ttf, BinaryData::MichromaRegular_ttfSize);
@@ -222,20 +222,18 @@ public:
     }
 
     // Right half — about (mirrors AboutControl, 5 lines x 15px)
-    // Original lines: plugin URL, "By Steven Atkinson", version+arch+api,
-    //                 contributors URL, third-party notices
     g.setFont(mRobotoFont.withHeight(14.0f));
     g.setColour(juce::Colours::white);
-    g.drawText("GATEWAY", juce::Rectangle<int>(300, 282 + 0 * lh, 280, lh),
+    g.drawText("NAMix", juce::Rectangle<int>(300, 282 + 0 * lh, 280, lh),
                juce::Justification::centredLeft);
-    g.drawText("Based on Gateway by Steven Atkinson",
+    g.drawText("Based on NeuralAmpModelerPlugin by Steven Atkinson",
                juce::Rectangle<int>(300, 282 + 1 * lh, 280, lh),
                juce::Justification::centredLeft);
     g.drawText("MIT licence - GPL v3 required by JUCE",
                juce::Rectangle<int>(300, 282 + 2 * lh, 280, lh),
                juce::Justification::centredLeft);
     g.setColour(juce::Colours::white.withAlpha(0.55f));
-    g.drawText("github.com/rations/gateway-linux",
+    g.drawText("github.com/rations/namix-linux",
                juce::Rectangle<int>(300, 282 + 3 * lh, 280, lh),
                juce::Justification::centredLeft);
   }

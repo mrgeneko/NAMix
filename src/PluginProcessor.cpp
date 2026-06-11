@@ -1,5 +1,5 @@
 /*
- * Gateway Linux VST3 Plugin
+ * NAMix Linux VST3 Plugin
  * Copyright (C) 2026 rations
  *
  * Based on NeuralAmpModelerPlugin by Steven Atkinson (MIT Licence).
@@ -117,7 +117,7 @@ static const juce::String kNoiseGateOn{"noiseGateOn"};
 // Parameter layout
 // ---------------------------------------------------------------------------
 juce::AudioProcessorValueTreeState::ParameterLayout
-GatewayAudioProcessor::createParameterLayout() {
+NAMixAudioProcessor::createParameterLayout() {
   juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
   layout.add(std::make_unique<juce::AudioParameterFloat>(
@@ -176,7 +176,7 @@ GatewayAudioProcessor::createParameterLayout() {
 // ---------------------------------------------------------------------------
 // Constructor / destructor
 // ---------------------------------------------------------------------------
-GatewayAudioProcessor::GatewayAudioProcessor()
+NAMixAudioProcessor::NAMixAudioProcessor()
     : AudioProcessor(BusesProperties()
                          .withInput("Input", juce::AudioChannelSet::mono(), true)
                          .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
@@ -188,14 +188,14 @@ GatewayAudioProcessor::GatewayAudioProcessor()
   apvts.addParameterListener("slim", this);
 }
 
-GatewayAudioProcessor::~GatewayAudioProcessor() {
+NAMixAudioProcessor::~NAMixAudioProcessor() {
   apvts.removeParameterListener("slim", this);
 }
 
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
-void GatewayAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
+void NAMixAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
   mSampleRate = sampleRate;
   mSamplesPerBlock = samplesPerBlock;
 
@@ -210,9 +210,9 @@ void GatewayAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock
     mModel->Reset(sampleRate, samplesPerBlock);
 }
 
-void GatewayAudioProcessor::releaseResources() {}
+void NAMixAudioProcessor::releaseResources() {}
 
-bool GatewayAudioProcessor::isBusesLayoutSupported(const BusesLayout &layouts) const {
+bool NAMixAudioProcessor::isBusesLayoutSupported(const BusesLayout &layouts) const {
   if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
     return false;
   if (layouts.getMainInputChannelSet() != juce::AudioChannelSet::mono() &&
@@ -224,7 +224,7 @@ bool GatewayAudioProcessor::isBusesLayoutSupported(const BusesLayout &layouts) c
 // ---------------------------------------------------------------------------
 // Audio thread
 // ---------------------------------------------------------------------------
-void GatewayAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
+void NAMixAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
                                          juce::MidiBuffer &) {
   juce::ScopedNoDenormals noDenormals;
 
@@ -261,7 +261,7 @@ void GatewayAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
 // ---------------------------------------------------------------------------
 // DSP chain
 // ---------------------------------------------------------------------------
-void GatewayAudioProcessor::applyDsp(juce::AudioBuffer<float> &buffer) {
+void NAMixAudioProcessor::applyDsp(juce::AudioBuffer<float> &buffer) {
   const int numSamples = buffer.getNumSamples();
 
   float inputGainDb = apvts.getRawParameterValue(params::kInputGain)->load();
@@ -406,7 +406,7 @@ void GatewayAudioProcessor::applyDsp(juce::AudioBuffer<float> &buffer) {
 // ---------------------------------------------------------------------------
 // Model / IR loading (called from message thread)
 // ---------------------------------------------------------------------------
-bool GatewayAudioProcessor::loadModel(const juce::File &file) {
+bool NAMixAudioProcessor::loadModel(const juce::File &file) {
   try {
     auto raw = nam::get_dsp(std::filesystem::path(file.getFullPathName().toStdString()));
     if (raw->NumInputChannels() != 1 || raw->NumOutputChannels() != 1)
@@ -432,12 +432,12 @@ bool GatewayAudioProcessor::loadModel(const juce::File &file) {
     mModelPending.store(true);
     return true;
   } catch (const std::exception &e) {
-    juce::Logger::writeToLog(juce::String("Gateway: model load failed: ") + e.what());
+    juce::Logger::writeToLog(juce::String("NAMix: model load failed:") + e.what());
     return false;
   }
 }
 
-void GatewayAudioProcessor::clearModel() {
+void NAMixAudioProcessor::clearModel() {
   mPendingModel.reset();
   mModelPath = {};
   mModelHasInputLevel.store(false, std::memory_order_relaxed);
@@ -447,12 +447,12 @@ void GatewayAudioProcessor::clearModel() {
   mModelPending.store(true);
 }
 
-bool GatewayAudioProcessor::loadIR(const juce::File &file) {
+bool NAMixAudioProcessor::loadIR(const juce::File &file) {
   try {
     auto ir = std::make_unique<dsp::ImpulseResponse>(
         file.getFullPathName().toStdString().c_str(), mSampleRate);
     if (ir->GetWavState() != dsp::wav::LoadReturnCode::SUCCESS) {
-      juce::Logger::writeToLog("Gateway: IR load failed: bad WAV file");
+      juce::Logger::writeToLog("NAMix: IR load failed: bad WAV file");
       return false;
     }
     mPendingIR = std::move(ir);
@@ -460,12 +460,12 @@ bool GatewayAudioProcessor::loadIR(const juce::File &file) {
     mIRPending.store(true);
     return true;
   } catch (const std::exception &e) {
-    juce::Logger::writeToLog(juce::String("Gateway: IR load failed: ") + e.what());
+    juce::Logger::writeToLog(juce::String("NAMix: IR load failed:") + e.what());
     return false;
   }
 }
 
-void GatewayAudioProcessor::clearIR() {
+void NAMixAudioProcessor::clearIR() {
   mPendingIR.reset();
   mIRPath = {};
   mIRPending.store(true);
@@ -474,7 +474,7 @@ void GatewayAudioProcessor::clearIR() {
 // ---------------------------------------------------------------------------
 // Parameter listener
 // ---------------------------------------------------------------------------
-void GatewayAudioProcessor::parameterChanged(const juce::String &parameterID,
+void NAMixAudioProcessor::parameterChanged(const juce::String &parameterID,
                                              float /*newValue*/) {
   if (parameterID == "slim")
     mSlimDirty.store(true, std::memory_order_release);
@@ -483,7 +483,7 @@ void GatewayAudioProcessor::parameterChanged(const juce::String &parameterID,
 // ---------------------------------------------------------------------------
 // State persistence
 // ---------------------------------------------------------------------------
-void GatewayAudioProcessor::getStateInformation(juce::MemoryBlock &dest) {
+void NAMixAudioProcessor::getStateInformation(juce::MemoryBlock &dest) {
   auto state = apvts.copyState();
   state.setProperty("modelPath", mModelPath, nullptr);
   state.setProperty("irPath", mIRPath, nullptr);
@@ -491,7 +491,7 @@ void GatewayAudioProcessor::getStateInformation(juce::MemoryBlock &dest) {
   copyXmlToBinary(*xml, dest);
 }
 
-void GatewayAudioProcessor::setStateInformation(const void *data, int sizeInBytes) {
+void NAMixAudioProcessor::setStateInformation(const void *data, int sizeInBytes) {
   std::unique_ptr<juce::XmlElement> xml(getXmlFromBinary(data, sizeInBytes));
   if (!xml || !xml->hasTagName(apvts.state.getType()))
     return;
@@ -517,10 +517,10 @@ void GatewayAudioProcessor::setStateInformation(const void *data, int sizeInByte
 // ---------------------------------------------------------------------------
 // Editor / plugin entry
 // ---------------------------------------------------------------------------
-juce::AudioProcessorEditor *GatewayAudioProcessor::createEditor() {
-  return new GatewayAudioProcessorEditor(*this);
+juce::AudioProcessorEditor *NAMixAudioProcessor::createEditor() {
+  return new NAMixAudioProcessorEditor(*this);
 }
 
 juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter() {
-  return new GatewayAudioProcessor();
+  return new NAMixAudioProcessor();
 }

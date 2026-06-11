@@ -1,5 +1,5 @@
 /*
- * Gateway Linux VST3 Plugin
+ * NAMix Linux VST3 Plugin
  * Copyright (C) 2026 rations
  *
  * Based on NeuralAmpModelerPlugin by Steven Atkinson (MIT Licence).
@@ -17,16 +17,16 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 
 #include "FileRow.h"
-#include "GatewayLookAndFeel.h"
-#include "GatewaySettingsPanel.h"
+#include "NAMixLookAndFeel.h"
+#include "NAMixSettingsPanel.h"
 #include "LevelMeter.h"
 #include "PluginProcessor.h"
 
-class GatewayAudioProcessorEditor : public juce::AudioProcessorEditor,
+class NAMixAudioProcessorEditor : public juce::AudioProcessorEditor,
                                     private juce::Timer {
 public:
-  explicit GatewayAudioProcessorEditor(GatewayAudioProcessor &);
-  ~GatewayAudioProcessorEditor() override;
+  explicit NAMixAudioProcessorEditor(NAMixAudioProcessor &);
+  ~NAMixAudioProcessorEditor() override;
 
   void paint(juce::Graphics &) override;
   void resized() override;
@@ -37,8 +37,8 @@ private:
   void chooseModelFile();
   void chooseIRFile();
 
-  GatewayAudioProcessor &mProcessor;
-  GatewayLookAndFeel mLookAndFeel;
+  NAMixAudioProcessor &mProcessor;
+  NAMixLookAndFeel mLookAndFeel;
 
   // Fonts loaded from embedded binary data (Michroma-Regular, Roboto-Regular)
   juce::Font mMichromaFont;
@@ -60,7 +60,7 @@ private:
   // Full-editor overlay: dark backdrop + centred slim knob.
   // Matches original NAMSlimOverlayBackdropControl + NAMKnobControl.
   struct SlimOverlay : public juce::Component {
-    SlimOverlay(juce::AudioProcessorValueTreeState &apvts, GatewayLookAndFeel &laf) {
+    SlimOverlay(juce::AudioProcessorValueTreeState &apvts, NAMixLookAndFeel &laf) {
       mKnob.setSliderStyle(juce::Slider::RotaryVerticalDrag);
       mKnob.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 80, 20);
       mKnob.setLookAndFeel(&laf);
@@ -98,7 +98,7 @@ private:
 
   // Gear / settings
   juce::TextButton mGearButton;
-  GatewaySettingsPanel mSettingsPanel;
+  NAMixSettingsPanel mSettingsPanel;
 
   // Knobs
   juce::Slider mInputGainSlider, mOutputGainSlider;
@@ -126,5 +126,5 @@ private:
   std::unique_ptr<juce::MenuBarModel> mMenuBarModel;
   std::unique_ptr<juce::FileChooser> mFileChooser;
 
-  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GatewayAudioProcessorEditor)
+  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NAMixAudioProcessorEditor)
 };
