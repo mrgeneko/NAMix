@@ -98,17 +98,18 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mAttachment;
   } mSlimOverlay;
 
-  // Parametric icon button. Shown only when the loaded model reports
-  // GetNumParams() > 0 (e.g. a ParametricWaveNet model). Clicking opens the
-  // parametric overlay.
-  juce::TextButton mParametricButton{"Params"};
+  // Inline parametric-knob row, shown permanently below the toggle strip
+  // (matches NeuralAmpModelerPlugin's inline row, added in place of an
+  // earlier click-to-reveal icon+overlay design). Built dynamically from
+  // the loaded model's own DSPParamDef metadata (name/min/max/default/
+  // steps) whenever a model loads; empty (all children hidden) when the
+  // loaded model isn't parametric. Capped at kUiMaxSlots visible knobs to
+  // match the iPlug2 fork's UI limit, even though the DSP/APVTS side
+  // supports up to kMaxParametricParams.
+  struct ParametricRow : public juce::Component {
+    static constexpr int kUiMaxSlots = 12;
 
-  // Full-editor overlay: dark backdrop + up to kMaxParametricParams knobs,
-  // built dynamically from the loaded model's own DSPParamDef metadata
-  // (name/min/max/default/steps) each time it's opened. Same shape as
-  // SlimOverlay above, generalized to N knobs instead of one.
-  struct ParametricOverlay : public juce::Component {
-    ParametricOverlay(NAMixAudioProcessor &proc, NAMixLookAndFeel &laf)
+    ParametricRow(NAMixAudioProcessor &proc, NAMixLookAndFeel &laf)
         : mProcessor(proc), mLaf(laf) {
       for (auto &lbl : mLabels) {
         lbl.setJustificationType(juce::Justification::centred);
@@ -121,23 +122,21 @@ private:
         sld.setLookAndFeel(&laf);
         addChildComponent(sld);
       }
-      setInterceptsMouseClicks(true, true);
     }
-    ~ParametricOverlay() override {
+    ~ParametricRow() override {
       for (auto &lbl : mLabels)
         lbl.setLookAndFeel(nullptr);
       for (auto &sld : mKnobs)
         sld.setLookAndFeel(nullptr);
     }
     // Rebuilds knobs/attachments from the processor's current model. Call
-    // right before showing the overlay, since the set of active knobs
-    // changes whenever a different model is loaded.
+    // whenever a model finishes loading (or is cleared) — the set of
+    // active knobs changes with it.
     void refresh() {
       mAttachments.clear();
       auto defs = mProcessor.getModelParamDefs();
-      mActiveCount = juce::jmin(static_cast<int>(defs.size()),
-                                NAMixAudioProcessor::kMaxParametricParams);
-      for (int i = 0; i < NAMixAudioProcessor::kMaxParametricParams; ++i) {
+      mActiveCount = juce::jmin(static_cast<int>(defs.size()), kUiMaxSlots);
+      for (int i = 0; i < kUiMaxSlots; ++i) {
         const bool active = i < mActiveCount;
         mKnobs[static_cast<size_t>(i)].setVisible(active);
         mLabels[static_cast<size_t>(i)].setVisible(active);
@@ -152,45 +151,43 @@ private:
       }
       resized();
     }
-    void paint(juce::Graphics &g) override {
-      g.setColour(juce::Colours::black.withAlpha(0.45f));
-      g.fillAll();
-    }
     void resized() override {
       if (mActiveCount <= 0)
         return;
-      constexpr int kw = 90, kh = 110, lh = 18, gap = 10;
-      const int cols = juce::jmin(mActiveCount, 6);
-      const int rows = (mActiveCount + cols - 1) / cols;
+      // Mirrors NeuralAmpModelerPlugin's packing: knobs shrink from 100px
+      // towards a 70px floor as more slots are active, wrapping to another
+      // row rather than going narrower than that.
+      constexpr int kKnobMaxW = 100, kKnobMinW = 70, kh = 110, lh = 18, gap = 10;
+      int cols = mActiveCount;
+      int rows = 1;
+      int kw = kKnobMaxW;
+      while (true) {
+        kw = (getWidth() - (cols - 1) * gap) / juce::jmax(cols, 1);
+        if (kw >= kKnobMinW || cols <= 1)
+          break;
+        ++rows;
+        cols = (mActiveCount + rows - 1) / rows;
+      }
+      kw = juce::jlimit(kKnobMinW, kKnobMaxW, kw);
       const int totalW = cols * kw + (cols - 1) * gap;
-      const int totalH = rows * (kh + lh) + (rows - 1) * gap;
       const int x0 = (getWidth() - totalW) / 2;
-      const int y0 = (getHeight() - totalH) / 2;
       for (int i = 0; i < mActiveCount; ++i) {
         const int col = i % cols;
         const int row = i / cols;
         const int x = x0 + col * (kw + gap);
-        const int y = y0 + row * (kh + lh + gap);
+        const int y = row * (kh + lh + gap);
         mLabels[static_cast<size_t>(i)].setBounds(x, y, kw, lh);
         mKnobs[static_cast<size_t>(i)].setBounds(x, y + lh, kw, kh);
       }
     }
-    void mouseDown(const juce::MouseEvent &e) override {
-      // Click anywhere outside every active knob/label dismisses the overlay.
-      for (int i = 0; i < mActiveCount; ++i)
-        if (mKnobs[static_cast<size_t>(i)].getBounds().contains(e.getPosition()) ||
-            mLabels[static_cast<size_t>(i)].getBounds().contains(e.getPosition()))
-          return;
-      setVisible(false);
-    }
     NAMixAudioProcessor &mProcessor;
     NAMixLookAndFeel &mLaf;
     int mActiveCount = 0;
-    std::array<juce::Slider, NAMixAudioProcessor::kMaxParametricParams> mKnobs;
-    std::array<juce::Label, NAMixAudioProcessor::kMaxParametricParams> mLabels;
+    std::array<juce::Slider, kUiMaxSlots> mKnobs;
+    std::array<juce::Label, kUiMaxSlots> mLabels;
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>>
         mAttachments;
-  } mParametricOverlay;
+  } mParametricRow;
 
   // Gear / settings
   juce::TextButton mGearButton;

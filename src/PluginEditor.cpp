@@ -55,9 +55,9 @@ public:
 
 // ============================================================
 // Layout constants — exact pixel values from NeuralAmpModeler
-// PLUG_WIDTH=600, PLUG_HEIGHT=400
-// mainArea   = 20px padding → (20,20,560,360)
-// contentArea = another 10px → (30,30,540,340)
+// PLUG_WIDTH=600, PLUG_HEIGHT=550
+// mainArea   = 20px padding → (20,20,560,510)
+// contentArea = another 10px → (30,30,540,490)
 // titleHeight = 50
 // NAM_KNOB_HEIGHT = 120
 // knobsPad = 20 (from each side within contentArea)
@@ -65,10 +65,15 @@ public:
 // fileWidth = 200 (row = 2*200 = 400px, centred in 540)
 // fileHeight = 30
 // irYOffset = 38
+//
+// PLUG_HEIGHT is 400 (upstream NAM plugin) + 150, permanently reserving a
+// row for parametric-model knobs/switches shown inline below the toggle
+// strip -- matching the same change made in the NeuralAmpModelerPlugin
+// (iPlug2) fork, in place of a click-to-reveal icon+overlay.
 // ============================================================
 namespace Layout {
 // contentArea origin and size
-static constexpr int CL = 30, CT = 30, CW = 540, CH = 340;
+static constexpr int CL = 30, CT = 30, CW = 540, CH = 490;
 
 // Knobs
 static constexpr int KNOB_Y = CT + 50 + 25; // titleHeight + extraSpace = 105
@@ -80,12 +85,19 @@ static constexpr int KNOB_AW = CW - 40;     // 500
 static constexpr int TOGGLE_Y = KNOB_Y + KNOB_H + 10; // 235
 static constexpr int TOGGLE_H = 50;                   // NAM_SWITCH_HEIGHT
 
+// Parametric-knob row — directly below the toggle strip, same horizontal
+// span as the main knob row above, filling the space added by the +150
+// window-height increase up to (but not overlapping) the file rows below.
+static constexpr int PARAMETRIC_ROW_Y = TOGGLE_Y + TOGGLE_H + 10;
+
 // File rows — centred 400px in contentArea, from bottom
 static constexpr int ROW_W = 400;
 static constexpr int ROW_X = CL + (CW - ROW_W) / 2;     // 100
 static constexpr int ROW_H = 30;                        // fileHeight
-static constexpr int MODEL_Y = CT + CH - 2 * ROW_H - 1; // 309
-static constexpr int IR_Y = MODEL_Y + 38;               // 347 (irYOffset)
+static constexpr int MODEL_Y = CT + CH - 2 * ROW_H - 1; // 459
+static constexpr int IR_Y = MODEL_Y + 38;               // 497 (irYOffset)
+
+static constexpr int PARAMETRIC_ROW_H = MODEL_Y - PARAMETRIC_ROW_Y - 10;
 
 // Slim icon — centred in the 60px gap between the model row right edge (500)
 // and the output meter left edge (560). SLIM_W=40 → 10px margin on each side.
@@ -124,7 +136,7 @@ static juce::Rectangle<int> knobCell(int i) {
 
 NAMixAudioProcessorEditor::NAMixAudioProcessorEditor(NAMixAudioProcessor &p)
     : AudioProcessorEditor(&p), mProcessor(p), mSettingsPanel(p.apvts),
-      mSlimOverlay(p.apvts, mLookAndFeel), mParametricOverlay(p, mLookAndFeel) {
+      mSlimOverlay(p.apvts, mLookAndFeel), mParametricRow(p, mLookAndFeel) {
   // Load embedded fonts (binary data from resources/fonts/)
   {
     auto michromaTypeface = juce::Typeface::createSystemTypefaceFor(
@@ -137,7 +149,7 @@ NAMixAudioProcessorEditor::NAMixAudioProcessorEditor(NAMixAudioProcessor &p)
   }
 
   setLookAndFeel(&mLookAndFeel);
-  setSize(600, 400);
+  setSize(600, 550);
 
   mBgImage = juce::ImageCache::getFromMemory(BinaryData::Background_jpg,
                                              BinaryData::Background_jpgSize);
@@ -217,19 +229,12 @@ NAMixAudioProcessorEditor::NAMixAudioProcessorEditor(NAMixAudioProcessor &p)
   mSlimOverlay.setVisible(false);
   addChildComponent(mSlimOverlay);
 
-  // --- Parametric button + overlay ---
-  // Shown only when the loaded model reports parametric knobs (GetNumParams() > 0).
-  mParametricButton.setTooltip("Adjust the loaded model's parametric controls.");
-  mParametricButton.setVisible(false);
-  mParametricButton.onClick = [this] {
-    mParametricOverlay.refresh();
-    mParametricOverlay.setVisible(true);
-    mParametricOverlay.toFront(false);
-  };
-  addAndMakeVisible(mParametricButton);
-
-  mParametricOverlay.setVisible(false);
-  addChildComponent(mParametricOverlay);
+  // --- Parametric knob row ---
+  // Always part of the layout; refresh() shows/hides individual knobs
+  // depending on whether the loaded model is parametric and how many
+  // knobs it declares. No button/overlay — matches the inline row in the
+  // NeuralAmpModelerPlugin (iPlug2) fork.
+  addAndMakeVisible(mParametricRow);
 
   // --- Gear button (transparent, overlays drawn gear icon) ---
   mGearButton.setButtonText("");
@@ -255,10 +260,7 @@ NAMixAudioProcessorEditor::NAMixAudioProcessorEditor(NAMixAudioProcessor &p)
       mSettingsPanel.setOutputModeSupport(mProcessor.getModelHasLoudness(),
                                           mProcessor.getModelHasOutputLevel());
       mSlimButton.setVisible(mProcessor.getModelIsSlimmable());
-      mParametricButton.setVisible(mProcessor.getModelNumParams() > 0);
-      // Force a reopen rather than leaving a stale overlay showing the
-      // previous model's knob labels/count bound to the new model's params.
-      mParametricOverlay.setVisible(false);
+      mParametricRow.refresh();
     }
   };
   mModelRow.onClear = [this] {
@@ -268,8 +270,7 @@ NAMixAudioProcessorEditor::NAMixAudioProcessorEditor(NAMixAudioProcessor &p)
     mSettingsPanel.clearOutputModeSupport();
     mSlimButton.setVisible(false);
     mSlimOverlay.setVisible(false);
-    mParametricButton.setVisible(false);
-    mParametricOverlay.setVisible(false);
+    mParametricRow.refresh();
   };
   {
     const juce::String mp = mProcessor.getModelPath();
@@ -277,7 +278,7 @@ NAMixAudioProcessorEditor::NAMixAudioProcessorEditor(NAMixAudioProcessor &p)
       mModelRow.setLoadedFile(juce::File(mp), "nam");
       mSettingsPanel.setModelSampleRate(mProcessor.getSampleRate());
       mSlimButton.setVisible(mProcessor.getModelIsSlimmable());
-      mParametricButton.setVisible(mProcessor.getModelNumParams() > 0);
+      mParametricRow.refresh();
     }
   }
   addAndMakeVisible(mModelRow);
@@ -439,20 +440,19 @@ void NAMixAudioProcessorEditor::resized() {
   }
 
   // Toggle strip — centred under NoiseGate (knob 1) and Mid (knob 3).
-  // The Params button reuses the empty toggle-strip space under Output
-  // (knob 5) — there's no room left in the Slim button's model-row gap.
   {
     auto ngCell = knobCell(1);
     auto midCell = knobCell(3);
-    auto outCell = knobCell(5);
     mNoiseGateButton.setBounds(
         ngCell.withY(Layout::TOGGLE_Y).withHeight(Layout::TOGGLE_H));
     mToneStackButton.setBounds(
         midCell.withY(Layout::TOGGLE_Y).withHeight(Layout::TOGGLE_H));
-    mParametricButton.setBounds(
-        outCell.withY(Layout::TOGGLE_Y).withHeight(Layout::TOGGLE_H));
   }
-  mParametricOverlay.setBounds(getLocalBounds());
+
+  // Parametric-knob row — directly below the toggle strip, same horizontal
+  // span as the main knob row.
+  mParametricRow.setBounds(Layout::KNOB_AX, Layout::PARAMETRIC_ROW_Y, Layout::KNOB_AW,
+                           Layout::PARAMETRIC_ROW_H);
 
   // Model row — 400px centred; slim icon button in the 56px gap to the right.
   // Icon is 56×28px, vertically centred on the row (matching original slimIconArea).
@@ -494,8 +494,7 @@ void NAMixAudioProcessorEditor::chooseModelFile() {
           mSettingsPanel.setOutputModeSupport(mProcessor.getModelHasLoudness(),
                                               mProcessor.getModelHasOutputLevel());
           mSlimButton.setVisible(mProcessor.getModelIsSlimmable());
-          mParametricButton.setVisible(mProcessor.getModelNumParams() > 0);
-          mParametricOverlay.setVisible(false);
+          mParametricRow.refresh();
         }
       });
 }
