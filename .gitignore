@@ -7,6 +7,10 @@ build/
 build-*/
 cmake-build-*/
 
+# Packaged release archives (scripts/makedist-linux.sh output) — distribute
+# via GitHub Releases instead of committing binaries to the repo history.
+dist/
+
 # CMake generated
 CMakeCache.txt
 CMakeFiles/

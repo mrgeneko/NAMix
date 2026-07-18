@@ -76,7 +76,7 @@ juce_add_binary_data(NAMixBinaryData SOURCES
 # ---------------------------------------------------------------------------
 juce_add_plugin(NAMixLinux
     COMPANY_NAME               "Gene Ko"
-    BUNDLE_ID                  "com.stevenatkinson.namix"
+    BUNDLE_ID                  "com.geneko.antistaticnam"
     PLUGIN_MANUFACTURER_CODE   NMIX
     PLUGIN_CODE                Nmix
     FORMATS                    VST3 Standalone

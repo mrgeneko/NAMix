@@ -18,8 +18,8 @@ adds support for **parametric (knob-controllable) models** — `.nam` files
 whose FiLM conditioning responds to live knob values instead of being baked
 in at training time — on top of Steven Atkinson's original DSP core. Loading
 a parametric model surfaces its own knobs (with their real names and ranges)
-in a **Params** overlay in NAMix; this only works with models exported with
-parametric metadata, and is not available in the upstream
+inline, below the Noise Gate/EQ toggles; this only works with models
+exported with parametric metadata, and is not available in the upstream
 [sdatkinson/NeuralAmpModelerCore](https://github.com/sdatkinson/NeuralAmpModelerCore)-based
 build.
 
@@ -160,9 +160,9 @@ bash scripts/makedist-linux.sh
    the input calibration level and output mode (Raw / Normalized / Calibrated).
 7. If the loaded model supports slimming, a small icon appears to the right of
    the NAM row. Click it to open the Slim overlay and reduce the model size.
-8. If the loaded model is parametric, a **Params** button appears below the
-   Output knob. Click it to open an overlay with that model's own knobs —
-   names and ranges come from the model file itself, so they vary per model.
+8. If the loaded model is parametric, its own knobs appear inline below the
+   Noise Gate/EQ toggles — names and ranges come from the model file
+   itself, so they vary per model.
 
 ---
 
