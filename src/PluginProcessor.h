@@ -117,8 +117,11 @@ private:
   // Give each active parametric slot the loaded model's real range/default
   // and reset its value. Message thread only (calls setValueNotifyingHost).
   void updateParametricRangesAndDefaults(const std::vector<nam::DSPParamDef> &defs);
-  // Read the current value of the first `numParams` parametric slots.
-  std::vector<float> readKnobValuesFromApvts(int numParams) const;
+  // Read the current value of the first `numParams` parametric slots into
+  // `out`, resizing it as needed. `out` should be pre-sized to
+  // kMaxParametricParams by the caller (see mKnobScratch) so this never
+  // reallocates when called from the audio thread.
+  void readKnobValuesFromApvtsInto(int numParams, std::vector<float> &out) const;
 
   double mSampleRate{48000.0};
   int mSamplesPerBlock{512};
@@ -167,9 +170,20 @@ private:
 
   // Number of active parametric knobs on the currently loaded model (0 if
   // none/not parametric), and their cached metadata for the UI to read.
+  // This is set as soon as loadModel() resolves (message thread) so the UI
+  // updates immediately, without waiting for the model to actually swap in
+  // on the audio thread — processBlock() below never trusts this count for
+  // sizing a call into the *currently live* model; it asks that model
+  // directly (see mParamsDirty handling) to avoid a stale-count race.
   std::atomic<int> mModelNumParams{0};
   mutable std::mutex mParamDefsMutex;
   std::vector<nam::DSPParamDef> mModelParamDefs;
+
+  // Pre-sized scratch buffer for the audio-thread SetKnobValues path.
+  // Resized up to kMaxParametricParams once in the constructor; later
+  // resize(n) calls with n <= kMaxParametricParams never reallocate, so
+  // processBlock() can safely reuse it without a heap allocation.
+  std::vector<float> mKnobScratch;
 
   // Persisted file paths — stored in plugin state so DAW projects can reload.
   juce::String mModelPath;

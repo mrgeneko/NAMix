@@ -17,6 +17,14 @@ The following components are used under the MIT Licence:
   (resources/img/Background.jpg, KnobBackground.png, MeterBackground.png,
   FileBackground.png, InputLevelBackground.png, Lines.png, SlimmableIcon.svg).
 
+  NeuralAmpModelerCore, as used here, is built from Gene Ko's fork
+  (https://github.com/mrgeneko/NeuralAmpModelerCore), which adds parametric
+  (knob-controllable) model support on top of Steven Atkinson's original
+  (slimmable model support predates this fork and is already part of
+  upstream NeuralAmpModelerCore), and is used under the same MIT Licence:
+    Copyright (c) 2023 Steven Atkinson
+    Copyright (c) 2026 Gene Ko (fork modifications)
+
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
   in the Software without restriction, including without limitation the rights
