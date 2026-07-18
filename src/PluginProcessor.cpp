@@ -185,11 +185,23 @@ NAMixAudioProcessor::createParameterLayout() {
   // placeholders until a parametric model loads and
   // updateParametricRangesAndDefaults() rewrites them to match its real
   // per-knob metadata (NAM/dsp.h: DSPParamDef).
+  //
+  // AudioParameterFloat derives its displayed-text decimal count from the
+  // range's *interval* once, in its constructor -- it never recomputes that
+  // when updateParametricRangesAndDefaults() later mutates `range` at
+  // runtime. Left to the default, a continuous (interval == 0) param falls
+  // back to 7 decimal places, which is what actually governs the knob's
+  // text box (SliderAttachment reads the parameter's own getText(), not
+  // the Slider's local setNumDecimalPlacesToDisplay()). Supplying our own
+  // stringFromValueFunction here bypasses that interval-based lookup
+  // entirely, so the display stays at 2 decimal places regardless of range.
   for (int i = 0; i < NAMixAudioProcessor::kMaxParametricParams; ++i) {
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID{NAMixAudioProcessor::getParametricParamId(i), 1},
         "Model Param " + juce::String(i + 1),
-        juce::NormalisableRange<float>(0.0f, 1.0f), 0.5f));
+        juce::NormalisableRange<float>(0.0f, 1.0f), 0.5f,
+        juce::AudioParameterFloatAttributes{}.withStringFromValueFunction(
+            [](float v, int) { return juce::String(v, 2); })));
   }
 
   return layout;
