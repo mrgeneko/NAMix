@@ -1,0 +1,48 @@
+name: Build
+
+# Compile-on-push build verification, mirroring the style of
+# mrgeneko/NeuralAmpModelerCore's build.yml, plus the unit test suite
+# (tests/) covering the parametric-knob logic: range validation, the
+# state-restore ordering, and the row-packing math.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    name: Build Linux (VST3 + Standalone)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake pkg-config \
+            libx11-dev libxext-dev libxcursor-dev libxrandr-dev libxinerama-dev \
+            libgl-dev libfreetype-dev libfontconfig-dev libpng-dev zlib1g-dev \
+            libcurl4-openssl-dev libasound2-dev libwebkit2gtk-4.1-dev
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --parallel "$(nproc)"
+
+      - name: Run unit tests
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Verify build artifacts exist
+        run: |
+          set -euo pipefail
+          vst3="build/NAMixLinux_artefacts/Release/VST3/Anti-Static NAM.vst3/Contents/x86_64-linux/Anti-Static NAM.so"
+          standalone="build/NAMixLinux_artefacts/Release/Standalone/Anti-Static NAM"
+          test -f "$vst3"
+          test -f "$standalone"
+          file "$vst3"
+          file "$standalone"

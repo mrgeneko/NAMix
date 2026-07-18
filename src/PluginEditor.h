@@ -22,6 +22,7 @@
 #include "NAMixLookAndFeel.h"
 #include "NAMixSettingsPanel.h"
 #include "LevelMeter.h"
+#include "ParametricKnobLayout.h"
 #include "PluginProcessor.h"
 
 class NAMixAudioProcessorEditor : public juce::AudioProcessorEditor,
@@ -155,35 +156,17 @@ private:
     void resized() override {
       if (mActiveCount <= 0)
         return;
-      // Mirrors NeuralAmpModelerPlugin's packing: knobs shrink from 100px
-      // towards a 70px floor as more slots are active, wrapping to another
-      // row rather than going narrower than that.
-      constexpr int kKnobMaxW = 100, kKnobMinW = 70;
-      constexpr int khMax = 110, khMin = 40, lh = 18, gap = 10;
-      int cols = mActiveCount;
-      int rows = 1;
-      int kw = kKnobMaxW;
-      while (true) {
-        kw = (getWidth() - (cols - 1) * gap) / juce::jmax(cols, 1);
-        if (kw >= kKnobMinW || cols <= 1)
-          break;
-        ++rows;
-        cols = (mActiveCount + rows - 1) / rows;
-      }
-      kw = juce::jlimit(kKnobMinW, kKnobMaxW, kw);
-
-      // However many rows the width-shrink above settled on, shrink knob
-      // HEIGHT (not just width) so that many rows always fit within our
-      // own bounds — this component's height is fixed by the caller
-      // (Layout::PARAMETRIC_ROW_H), so nothing may extend past it.
-      int kh = khMax;
-      int rowH = kh + lh;
-      const int neededH = rows * rowH + (rows - 1) * gap;
-      if (neededH > getHeight()) {
-        const int available = getHeight() - (rows - 1) * gap - rows * lh;
-        kh = juce::jmax(khMin, available / juce::jmax(rows, 1));
-        rowH = kh + lh;
-      }
+      // See ParametricRowLayoutTests.cpp for direct tests of this packing,
+      // including the >6-active-knob case that used to clip a second row.
+      const auto layout =
+          computeParametricRowLayout(mActiveCount, getWidth(), getHeight());
+      const int cols = layout.cols;
+      const int rows = layout.rows;
+      const int kw = layout.knobWidth;
+      const int kh = layout.knobHeight;
+      const int lh = layout.labelHeight;
+      const int gap = layout.gap;
+      const int rowH = kh + lh;
 
       const int totalW = cols * kw + (cols - 1) * gap;
       const int totalH = rows * rowH + (rows - 1) * gap;
