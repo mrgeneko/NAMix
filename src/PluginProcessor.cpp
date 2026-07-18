@@ -94,6 +94,17 @@ public:
       s->SetSlimmableSize(val);
   }
 
+  // Parametric-model knob interface — forwarded straight to the encapsulated
+  // model. Non-parametric models inherit no-op defaults from nam::DSP, so
+  // these are safe to call unconditionally regardless of model type.
+  int GetNumParams() const override { return mEncapsulated->GetNumParams(); }
+  std::vector<nam::DSPParamDef> GetParameterDefs() const override {
+    return mEncapsulated->GetParameterDefs();
+  }
+  void SetKnobValues(const std::vector<float> &values) override {
+    mEncapsulated->SetKnobValues(values);
+  }
+
 private:
   std::unique_ptr<nam::DSP> mEncapsulated;
   dsp::ResamplingContainer<NAM_SAMPLE, 1, 12> mResampler;
@@ -170,6 +181,17 @@ NAMixAudioProcessor::createParameterLayout() {
   layout.add(std::make_unique<juce::AudioParameterBool>(
       juce::ParameterID{"calibrateInput", 1}, "Calibrate Input", false));
 
+  // Fixed-size bank of generic parametric-knob slots. Range/name/default are
+  // placeholders until a parametric model loads and
+  // updateParametricRangesAndDefaults() rewrites them to match its real
+  // per-knob metadata (NAM/dsp.h: DSPParamDef).
+  for (int i = 0; i < NAMixAudioProcessor::kMaxParametricParams; ++i) {
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID{NAMixAudioProcessor::getParametricParamId(i), 1},
+        "Model Param " + juce::String(i + 1),
+        juce::NormalisableRange<float>(0.0f, 1.0f), 0.5f));
+  }
+
   return layout;
 }
 
@@ -186,10 +208,14 @@ NAMixAudioProcessor::NAMixAudioProcessor()
   mNoiseGateTrigger.AddListener(&mNoiseGateGain);
 
   apvts.addParameterListener("slim", this);
+  for (int i = 0; i < kMaxParametricParams; ++i)
+    apvts.addParameterListener(getParametricParamId(i), this);
 }
 
 NAMixAudioProcessor::~NAMixAudioProcessor() {
   apvts.removeParameterListener("slim", this);
+  for (int i = 0; i < kMaxParametricParams; ++i)
+    apvts.removeParameterListener(getParametricParamId(i), this);
 }
 
 // ---------------------------------------------------------------------------
@@ -237,11 +263,29 @@ void NAMixAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
       if (auto *r = dynamic_cast<ResamplingNAM *>(mModel.get())) {
         setLatencySamples(r->GetLatency());
         mModelIsSlimmable.store(r->IsSlimmable(), std::memory_order_relaxed);
+
+        // Cache parametric metadata for the UI. Ranges/defaults on the APVTS
+        // parameters themselves were already set in loadModel() (message
+        // thread); this just mirrors the count/defs for getModelNumParams()/
+        // getModelParamDefs() once the model is actually live.
+        auto defs = r->GetParameterDefs();
+        if (static_cast<int>(defs.size()) > kMaxParametricParams)
+          defs.resize(static_cast<size_t>(kMaxParametricParams));
+        {
+          std::lock_guard<std::mutex> lock(mParamDefsMutex);
+          mModelParamDefs = defs;
+        }
+        mModelNumParams.store(static_cast<int>(defs.size()), std::memory_order_relaxed);
       }
     } else {
       mModelHasInputLevel.store(false, std::memory_order_relaxed);
       mModelHasOutputLevel.store(false, std::memory_order_relaxed);
       mModelIsSlimmable.store(false, std::memory_order_relaxed);
+      mModelNumParams.store(0, std::memory_order_relaxed);
+      {
+        std::lock_guard<std::mutex> lock(mParamDefsMutex);
+        mModelParamDefs.clear();
+      }
       setLatencySamples(0);
     }
   }
@@ -253,6 +297,15 @@ void NAMixAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
     const float v = apvts.getRawParameterValue("slim")->load();
     if (auto *r = dynamic_cast<ResamplingNAM *>(mModel.get()))
       r->TrySetSlimmableSize(static_cast<double>(v));
+  }
+
+  // Apply parametric knob updates requested from the message thread.
+  if (mParamsDirty.exchange(false, std::memory_order_acq_rel)) {
+    const int n = mModelNumParams.load(std::memory_order_relaxed);
+    if (n > 0) {
+      if (auto *r = dynamic_cast<ResamplingNAM *>(mModel.get()))
+        r->SetKnobValues(readKnobValuesFromApvts(n));
+    }
   }
 
   applyDsp(buffer);
@@ -419,6 +472,24 @@ bool NAMixAudioProcessor::loadModel(const juce::File &file) {
     wrapped->TrySetSlimmableSize(
         static_cast<double>(apvts.getRawParameterValue("slim")->load()));
 
+    // Set up the fixed parametric-knob slots for this model (range/name/
+    // default per real DSPParamDef) and apply their (now-default) values to
+    // the model before it goes live. Message thread only — safe to call
+    // setValueNotifyingHost() here.
+    {
+      auto defs = wrapped->GetParameterDefs();
+      if (static_cast<int>(defs.size()) > kMaxParametricParams)
+        defs.resize(static_cast<size_t>(kMaxParametricParams));
+      updateParametricRangesAndDefaults(defs);
+      {
+        std::lock_guard<std::mutex> lock(mParamDefsMutex);
+        mModelParamDefs = defs;
+      }
+      mModelNumParams.store(static_cast<int>(defs.size()), std::memory_order_relaxed);
+      if (!defs.empty())
+        wrapped->SetKnobValues(readKnobValuesFromApvts(static_cast<int>(defs.size())));
+    }
+
     mPendingModel = std::move(wrapped);
     mModelPath = file.getFullPathName();
     // Pre-set capability flags so the UI can read them as soon as loadModel()
@@ -444,6 +515,11 @@ void NAMixAudioProcessor::clearModel() {
   mModelHasOutputLevel.store(false, std::memory_order_relaxed);
   mModelHasLoudness.store(false, std::memory_order_relaxed);
   mModelIsSlimmable.store(false, std::memory_order_relaxed);
+  mModelNumParams.store(0, std::memory_order_relaxed);
+  {
+    std::lock_guard<std::mutex> lock(mParamDefsMutex);
+    mModelParamDefs.clear();
+  }
   mModelPending.store(true);
 }
 
@@ -478,6 +554,40 @@ void NAMixAudioProcessor::parameterChanged(const juce::String &parameterID,
                                              float /*newValue*/) {
   if (parameterID == "slim")
     mSlimDirty.store(true, std::memory_order_release);
+  else if (parameterID.startsWith("nam_param_"))
+    mParamsDirty.store(true, std::memory_order_release);
+}
+
+// ---------------------------------------------------------------------------
+// Parametric-model knob helpers
+// ---------------------------------------------------------------------------
+void NAMixAudioProcessor::updateParametricRangesAndDefaults(
+    const std::vector<nam::DSPParamDef> &defs) {
+  const int numParams = static_cast<int>(defs.size());
+  for (int i = 0; i < kMaxParametricParams; ++i) {
+    auto *fp = dynamic_cast<juce::AudioParameterFloat *>(
+        apvts.getParameter(getParametricParamId(i)));
+    if (!fp)
+      continue;
+    if (i < numParams) {
+      const auto &d = defs[static_cast<size_t>(i)];
+      const float interval =
+          d.steps > 1 ? (d.max_val - d.min_val) / static_cast<float>(d.steps - 1) : 0.0f;
+      fp->range = juce::NormalisableRange<float>(d.min_val, d.max_val, interval);
+      fp->setValueNotifyingHost(fp->convertTo0to1(d.default_val));
+    } else {
+      fp->range = juce::NormalisableRange<float>(0.0f, 1.0f);
+    }
+  }
+}
+
+std::vector<float> NAMixAudioProcessor::readKnobValuesFromApvts(int numParams) const {
+  std::vector<float> vals(static_cast<size_t>(numParams));
+  for (int i = 0; i < numParams; ++i) {
+    auto *raw = apvts.getRawParameterValue(getParametricParamId(i));
+    vals[static_cast<size_t>(i)] = raw ? raw->load() : 0.0f;
+  }
+  return vals;
 }
 
 // ---------------------------------------------------------------------------
