@@ -103,12 +103,11 @@ private:
   // earlier click-to-reveal icon+overlay design). Built dynamically from
   // the loaded model's own DSPParamDef metadata (name/min/max/default/
   // steps) whenever a model loads; empty (all children hidden) when the
-  // loaded model isn't parametric. Capped at kUiMaxSlots visible knobs to
-  // match the iPlug2 fork's UI limit, even though the DSP/APVTS side
-  // supports up to kMaxParametricParams.
+  // loaded model isn't parametric. Sized to the same
+  // NAMixAudioProcessor::kMaxParametricParams cap as the DSP/APVTS side —
+  // resized() shrinks row height (not just knob width) as needed so that
+  // however many are active, none ever get clipped by our fixed bounds.
   struct ParametricRow : public juce::Component {
-    static constexpr int kUiMaxSlots = 12;
-
     ParametricRow(NAMixAudioProcessor &proc, NAMixLookAndFeel &laf)
         : mProcessor(proc), mLaf(laf) {
       for (auto &lbl : mLabels) {
@@ -119,6 +118,7 @@ private:
       for (auto &sld : mKnobs) {
         sld.setSliderStyle(juce::Slider::RotaryVerticalDrag);
         sld.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 70, 17);
+        sld.setNumDecimalPlacesToDisplay(2);
         sld.setLookAndFeel(&laf);
         addChildComponent(sld);
       }
@@ -135,8 +135,9 @@ private:
     void refresh() {
       mAttachments.clear();
       auto defs = mProcessor.getModelParamDefs();
-      mActiveCount = juce::jmin(static_cast<int>(defs.size()), kUiMaxSlots);
-      for (int i = 0; i < kUiMaxSlots; ++i) {
+      mActiveCount = juce::jmin(static_cast<int>(defs.size()),
+                                NAMixAudioProcessor::kMaxParametricParams);
+      for (int i = 0; i < NAMixAudioProcessor::kMaxParametricParams; ++i) {
         const bool active = i < mActiveCount;
         mKnobs[static_cast<size_t>(i)].setVisible(active);
         mLabels[static_cast<size_t>(i)].setVisible(active);
@@ -157,7 +158,8 @@ private:
       // Mirrors NeuralAmpModelerPlugin's packing: knobs shrink from 100px
       // towards a 70px floor as more slots are active, wrapping to another
       // row rather than going narrower than that.
-      constexpr int kKnobMaxW = 100, kKnobMinW = 70, kh = 110, lh = 18, gap = 10;
+      constexpr int kKnobMaxW = 100, kKnobMinW = 70;
+      constexpr int khMax = 110, khMin = 40, lh = 18, gap = 10;
       int cols = mActiveCount;
       int rows = 1;
       int kw = kKnobMaxW;
@@ -169,13 +171,29 @@ private:
         cols = (mActiveCount + rows - 1) / rows;
       }
       kw = juce::jlimit(kKnobMinW, kKnobMaxW, kw);
+
+      // However many rows the width-shrink above settled on, shrink knob
+      // HEIGHT (not just width) so that many rows always fit within our
+      // own bounds — this component's height is fixed by the caller
+      // (Layout::PARAMETRIC_ROW_H), so nothing may extend past it.
+      int kh = khMax;
+      int rowH = kh + lh;
+      const int neededH = rows * rowH + (rows - 1) * gap;
+      if (neededH > getHeight()) {
+        const int available = getHeight() - (rows - 1) * gap - rows * lh;
+        kh = juce::jmax(khMin, available / juce::jmax(rows, 1));
+        rowH = kh + lh;
+      }
+
       const int totalW = cols * kw + (cols - 1) * gap;
+      const int totalH = rows * rowH + (rows - 1) * gap;
       const int x0 = (getWidth() - totalW) / 2;
+      const int y0 = juce::jmax(0, (getHeight() - totalH) / 2);
       for (int i = 0; i < mActiveCount; ++i) {
         const int col = i % cols;
         const int row = i / cols;
         const int x = x0 + col * (kw + gap);
-        const int y = row * (kh + lh + gap);
+        const int y = y0 + row * (rowH + gap);
         mLabels[static_cast<size_t>(i)].setBounds(x, y, kw, lh);
         mKnobs[static_cast<size_t>(i)].setBounds(x, y + lh, kw, kh);
       }
@@ -183,8 +201,8 @@ private:
     NAMixAudioProcessor &mProcessor;
     NAMixLookAndFeel &mLaf;
     int mActiveCount = 0;
-    std::array<juce::Slider, kUiMaxSlots> mKnobs;
-    std::array<juce::Label, kUiMaxSlots> mLabels;
+    std::array<juce::Slider, NAMixAudioProcessor::kMaxParametricParams> mKnobs;
+    std::array<juce::Label, NAMixAudioProcessor::kMaxParametricParams> mLabels;
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>>
         mAttachments;
   } mParametricRow;
