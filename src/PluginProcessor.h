@@ -21,6 +21,7 @@
 
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -90,12 +91,34 @@ public:
     return mModelIsSlimmable.load(std::memory_order_relaxed);
   }
 
+  // Parametric-model knobs — up to kMaxParametricParams generic float
+  // parameters are always present (fixed slots, like LV2/VST3 require);
+  // their range/name/default are set from the live model's own metadata
+  // whenever a model loads. See NAM/dsp.h: DSPParamDef, DSP::GetParameterDefs().
+  static constexpr int kMaxParametricParams = 16;
+  static juce::String getParametricParamId(int index) {
+    return "nam_param_" + juce::String(index);
+  }
+  int getModelNumParams() const {
+    return mModelNumParams.load(std::memory_order_relaxed);
+  }
+  std::vector<nam::DSPParamDef> getModelParamDefs() const {
+    std::lock_guard<std::mutex> lock(mParamDefsMutex);
+    return mModelParamDefs;
+  }
+
   juce::AudioProcessorValueTreeState apvts;
 
   static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
 private:
   void applyDsp(juce::AudioBuffer<float> &buffer);
+
+  // Give each active parametric slot the loaded model's real range/default
+  // and reset its value. Message thread only (calls setValueNotifyingHost).
+  void updateParametricRangesAndDefaults(const std::vector<nam::DSPParamDef> &defs);
+  // Read the current value of the first `numParams` parametric slots.
+  std::vector<float> readKnobValuesFromApvts(int numParams) const;
 
   double mSampleRate{48000.0};
   int mSamplesPerBlock{512};
@@ -132,12 +155,21 @@ private:
   // applied to the model in processBlock (audio thread).
   std::atomic<bool> mSlimDirty{false};
 
+  // Parametric-knob dirty flag: same pattern as mSlimDirty above.
+  std::atomic<bool> mParamsDirty{false};
+
   // Model capability flags — written on audio thread when model swaps, read by
   // message thread to enable/disable UI controls.
   std::atomic<bool> mModelHasInputLevel{false};
   std::atomic<bool> mModelHasOutputLevel{false};
   std::atomic<bool> mModelHasLoudness{false};
   std::atomic<bool> mModelIsSlimmable{false};
+
+  // Number of active parametric knobs on the currently loaded model (0 if
+  // none/not parametric), and their cached metadata for the UI to read.
+  std::atomic<int> mModelNumParams{0};
+  mutable std::mutex mParamDefsMutex;
+  std::vector<nam::DSPParamDef> mModelParamDefs;
 
   // Persisted file paths — stored in plugin state so DAW projects can reload.
   juce::String mModelPath;

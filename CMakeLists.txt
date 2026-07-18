@@ -28,11 +28,13 @@ add_library(NamDsp STATIC
     NeuralAmpModelerCore/NAM/convnet.cpp
     NeuralAmpModelerCore/NAM/dsp.cpp
     NeuralAmpModelerCore/NAM/get_dsp.cpp
+    NeuralAmpModelerCore/NAM/linear.cpp
     NeuralAmpModelerCore/NAM/lstm.cpp
     NeuralAmpModelerCore/NAM/ring_buffer.cpp
     NeuralAmpModelerCore/NAM/util.cpp
     NeuralAmpModelerCore/NAM/wavenet/model.cpp
     NeuralAmpModelerCore/NAM/wavenet/a2_fast.cpp
+    NeuralAmpModelerCore/NAM/wavenet/parametric_wavenet.cpp
     NeuralAmpModelerCore/NAM/wavenet/slimmable.cpp
     AudioDSPTools/dsp/dsp.cpp
     AudioDSPTools/dsp/ImpulseResponse.cpp

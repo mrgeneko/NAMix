@@ -124,7 +124,7 @@ static juce::Rectangle<int> knobCell(int i) {
 
 NAMixAudioProcessorEditor::NAMixAudioProcessorEditor(NAMixAudioProcessor &p)
     : AudioProcessorEditor(&p), mProcessor(p), mSettingsPanel(p.apvts),
-      mSlimOverlay(p.apvts, mLookAndFeel) {
+      mSlimOverlay(p.apvts, mLookAndFeel), mParametricOverlay(p, mLookAndFeel) {
   // Load embedded fonts (binary data from resources/fonts/)
   {
     auto michromaTypeface = juce::Typeface::createSystemTypefaceFor(
@@ -217,6 +217,20 @@ NAMixAudioProcessorEditor::NAMixAudioProcessorEditor(NAMixAudioProcessor &p)
   mSlimOverlay.setVisible(false);
   addChildComponent(mSlimOverlay);
 
+  // --- Parametric button + overlay ---
+  // Shown only when the loaded model reports parametric knobs (GetNumParams() > 0).
+  mParametricButton.setTooltip("Adjust the loaded model's parametric controls.");
+  mParametricButton.setVisible(false);
+  mParametricButton.onClick = [this] {
+    mParametricOverlay.refresh();
+    mParametricOverlay.setVisible(true);
+    mParametricOverlay.toFront(false);
+  };
+  addAndMakeVisible(mParametricButton);
+
+  mParametricOverlay.setVisible(false);
+  addChildComponent(mParametricOverlay);
+
   // --- Gear button (transparent, overlays drawn gear icon) ---
   mGearButton.setButtonText("");
   mGearButton.setTooltip("Settings");
@@ -241,6 +255,7 @@ NAMixAudioProcessorEditor::NAMixAudioProcessorEditor(NAMixAudioProcessor &p)
       mSettingsPanel.setOutputModeSupport(mProcessor.getModelHasLoudness(),
                                           mProcessor.getModelHasOutputLevel());
       mSlimButton.setVisible(mProcessor.getModelIsSlimmable());
+      mParametricButton.setVisible(mProcessor.getModelNumParams() > 0);
     }
   };
   mModelRow.onClear = [this] {
@@ -250,6 +265,8 @@ NAMixAudioProcessorEditor::NAMixAudioProcessorEditor(NAMixAudioProcessor &p)
     mSettingsPanel.clearOutputModeSupport();
     mSlimButton.setVisible(false);
     mSlimOverlay.setVisible(false);
+    mParametricButton.setVisible(false);
+    mParametricOverlay.setVisible(false);
   };
   {
     const juce::String mp = mProcessor.getModelPath();
@@ -257,6 +274,7 @@ NAMixAudioProcessorEditor::NAMixAudioProcessorEditor(NAMixAudioProcessor &p)
       mModelRow.setLoadedFile(juce::File(mp), "nam");
       mSettingsPanel.setModelSampleRate(mProcessor.getSampleRate());
       mSlimButton.setVisible(mProcessor.getModelIsSlimmable());
+      mParametricButton.setVisible(mProcessor.getModelNumParams() > 0);
     }
   }
   addAndMakeVisible(mModelRow);
@@ -417,15 +435,21 @@ void NAMixAudioProcessorEditor::resized() {
     sld->setBounds(cell);
   }
 
-  // Toggle strip — centred under NoiseGate (knob 1) and Mid (knob 3)
+  // Toggle strip — centred under NoiseGate (knob 1) and Mid (knob 3).
+  // The Params button reuses the empty toggle-strip space under Output
+  // (knob 5) — there's no room left in the Slim button's model-row gap.
   {
     auto ngCell = knobCell(1);
     auto midCell = knobCell(3);
+    auto outCell = knobCell(5);
     mNoiseGateButton.setBounds(
         ngCell.withY(Layout::TOGGLE_Y).withHeight(Layout::TOGGLE_H));
     mToneStackButton.setBounds(
         midCell.withY(Layout::TOGGLE_Y).withHeight(Layout::TOGGLE_H));
+    mParametricButton.setBounds(
+        outCell.withY(Layout::TOGGLE_Y).withHeight(Layout::TOGGLE_H));
   }
+  mParametricOverlay.setBounds(getLocalBounds());
 
   // Model row — 400px centred; slim icon button in the 56px gap to the right.
   // Icon is 56×28px, vertically centred on the row (matching original slimIconArea).
@@ -467,6 +491,7 @@ void NAMixAudioProcessorEditor::chooseModelFile() {
           mSettingsPanel.setOutputModeSupport(mProcessor.getModelHasLoudness(),
                                               mProcessor.getModelHasOutputLevel());
           mSlimButton.setVisible(mProcessor.getModelIsSlimmable());
+          mParametricButton.setVisible(mProcessor.getModelNumParams() > 0);
         }
       });
 }
