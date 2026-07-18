@@ -13,12 +13,12 @@ PKGDIR="$STAGEDIR/NAMix-${VERSION}"
 mkdir -p "$PKGDIR"
 
 # VST3 bundle — strip the shared library inside the bundle
-BUNDLE="$REPO/build/NAMixLinux_artefacts/Release/VST3/NAMix.vst3"
+BUNDLE="$REPO/build/NAMixLinux_artefacts/Release/VST3/Anti-Static NAM.vst3"
 find "$BUNDLE" -name "*.so" -exec strip --strip-unneeded {} \;
 cp -r "$BUNDLE" "$PKGDIR/"
 
 # Standalone binary
-STANDALONE="$REPO/build/NAMixLinux_artefacts/Release/Standalone/NAMix"
+STANDALONE="$REPO/build/NAMixLinux_artefacts/Release/Standalone/Anti-Static NAM"
 if [ -f "$STANDALONE" ]; then
   strip --strip-unneeded "$STANDALONE"
   cp "$STANDALONE" "$PKGDIR/"

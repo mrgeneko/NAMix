@@ -256,6 +256,9 @@ NAMixAudioProcessorEditor::NAMixAudioProcessorEditor(NAMixAudioProcessor &p)
                                           mProcessor.getModelHasOutputLevel());
       mSlimButton.setVisible(mProcessor.getModelIsSlimmable());
       mParametricButton.setVisible(mProcessor.getModelNumParams() > 0);
+      // Force a reopen rather than leaving a stale overlay showing the
+      // previous model's knob labels/count bound to the new model's params.
+      mParametricOverlay.setVisible(false);
     }
   };
   mModelRow.onClear = [this] {
@@ -341,7 +344,7 @@ void NAMixAudioProcessorEditor::paint(juce::Graphics &g) {
   // Title — Michroma-Regular 30px, white, centred in contentArea.GetFromTop(50)
   g.setColour(juce::Colour(0xfff2f2f2));
   g.setFont(mMichromaFont.withHeight(30.0f));
-  g.drawText("NAMix", juce::Rectangle<int>(Layout::CL, Layout::CT, Layout::CW, 50),
+  g.drawText("Anti-Static NAMix", juce::Rectangle<int>(Layout::CL, Layout::CT, Layout::CW, 50),
              juce::Justification::centred);
 
   // Gear icon — drawn in the settingsButtonArea corner (centred in 22×22)
@@ -492,6 +495,7 @@ void NAMixAudioProcessorEditor::chooseModelFile() {
                                               mProcessor.getModelHasOutputLevel());
           mSlimButton.setVisible(mProcessor.getModelIsSlimmable());
           mParametricButton.setVisible(mProcessor.getModelNumParams() > 0);
+          mParametricOverlay.setVisible(false);
         }
       });
 }

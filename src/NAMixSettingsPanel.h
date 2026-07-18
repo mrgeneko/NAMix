@@ -221,6 +221,15 @@ public:
                  juce::Justification::centredLeft);
     }
 
+    // Parametric-model credit — mirrors the equivalent addition in
+    // NeuralAmpModelerPlugin's NAMSettingsPageControl (row 3 of the same
+    // left-half 4-line block used by ModelInfoControl above).
+    g.setFont(mRobotoFont.withHeight(14.0f));
+    g.setColour(juce::Colours::white);
+    g.drawText("Parametric Model Support By Gene Ko",
+               juce::Rectangle<int>(20, 282 + 3 * lh, 280, lh),
+               juce::Justification::centredLeft);
+
     // Right half — about (mirrors AboutControl, 5 lines x 15px)
     g.setFont(mRobotoFont.withHeight(14.0f));
     g.setColour(juce::Colours::white);

@@ -75,13 +75,13 @@ juce_add_binary_data(NAMixBinaryData SOURCES
 # Plugin definition
 # ---------------------------------------------------------------------------
 juce_add_plugin(NAMixLinux
-    COMPANY_NAME               "Steven Atkinson"
+    COMPANY_NAME               "Gene Ko"
     BUNDLE_ID                  "com.stevenatkinson.namix"
     PLUGIN_MANUFACTURER_CODE   NMIX
     PLUGIN_CODE                Nmix
     FORMATS                    VST3 Standalone
     NEEDS_STANDALONE           TRUE
-    PRODUCT_NAME               "NAMix"
+    PRODUCT_NAME               "Anti-Static NAM"
     IS_SYNTH                   FALSE
     NEEDS_MIDI_INPUT           FALSE
     NEEDS_MIDI_OUTPUT          FALSE

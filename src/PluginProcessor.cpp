@@ -203,6 +203,9 @@ NAMixAudioProcessor::NAMixAudioProcessor()
                          .withInput("Input", juce::AudioChannelSet::mono(), true)
                          .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
       apvts(*this, nullptr, "Parameters", createParameterLayout()) {
+  // Pre-size once so processBlock() can reuse this without reallocating.
+  mKnobScratch.resize(static_cast<size_t>(kMaxParametricParams), 0.0f);
+
   // Wire the noise gate: trigger listens to the input and notifies the gain
   // module, which applies the computed envelope to the model output.
   mNoiseGateTrigger.AddListener(&mNoiseGateGain);
@@ -268,12 +271,20 @@ void NAMixAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
         // parameters themselves were already set in loadModel() (message
         // thread); this just mirrors the count/defs for getModelNumParams()/
         // getModelParamDefs() once the model is actually live.
+        //
+        // try_lock, not a blocking lock: this runs on the audio thread, and
+        // getModelParamDefs() (message thread, e.g. opening the Params
+        // overlay) can hold this same mutex. If it's contended just skip
+        // the cache update this buffer -- getModelParamDefs() will see the
+        // fresh values as soon as the lock is free, typically the very next
+        // callback, and nothing here needs it to be exactly synchronous.
         auto defs = r->GetParameterDefs();
         if (static_cast<int>(defs.size()) > kMaxParametricParams)
           defs.resize(static_cast<size_t>(kMaxParametricParams));
         {
-          std::lock_guard<std::mutex> lock(mParamDefsMutex);
-          mModelParamDefs = defs;
+          std::unique_lock<std::mutex> lock(mParamDefsMutex, std::try_to_lock);
+          if (lock.owns_lock())
+            mModelParamDefs = defs;
         }
         mModelNumParams.store(static_cast<int>(defs.size()), std::memory_order_relaxed);
       }
@@ -283,8 +294,9 @@ void NAMixAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
       mModelIsSlimmable.store(false, std::memory_order_relaxed);
       mModelNumParams.store(0, std::memory_order_relaxed);
       {
-        std::lock_guard<std::mutex> lock(mParamDefsMutex);
-        mModelParamDefs.clear();
+        std::unique_lock<std::mutex> lock(mParamDefsMutex, std::try_to_lock);
+        if (lock.owns_lock())
+          mModelParamDefs.clear();
       }
       setLatencySamples(0);
     }
@@ -300,11 +312,20 @@ void NAMixAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   }
 
   // Apply parametric knob updates requested from the message thread.
+  //
+  // Deliberately re-query the live model's own GetNumParams() here rather
+  // than trust the cached mModelNumParams: that cache is updated as soon as
+  // loadModel() resolves on the message thread, which can run ahead of the
+  // model actually swapping in above. Using the count from whichever model
+  // is *actually* live right now avoids sizing a knob-values call for a
+  // different (new, not-yet-swapped or already-replaced) model.
   if (mParamsDirty.exchange(false, std::memory_order_acq_rel)) {
-    const int n = mModelNumParams.load(std::memory_order_relaxed);
-    if (n > 0) {
-      if (auto *r = dynamic_cast<ResamplingNAM *>(mModel.get()))
-        r->SetKnobValues(readKnobValuesFromApvts(n));
+    if (auto *r = dynamic_cast<ResamplingNAM *>(mModel.get())) {
+      const int n = r->GetNumParams();
+      if (n > 0) {
+        readKnobValuesFromApvtsInto(n, mKnobScratch);
+        r->SetKnobValues(mKnobScratch);
+      }
     }
   }
 
@@ -486,8 +507,11 @@ bool NAMixAudioProcessor::loadModel(const juce::File &file) {
         mModelParamDefs = defs;
       }
       mModelNumParams.store(static_cast<int>(defs.size()), std::memory_order_relaxed);
-      if (!defs.empty())
-        wrapped->SetKnobValues(readKnobValuesFromApvts(static_cast<int>(defs.size())));
+      if (!defs.empty()) {
+        std::vector<float> initial;
+        readKnobValuesFromApvtsInto(static_cast<int>(defs.size()), initial);
+        wrapped->SetKnobValues(initial);
+      }
     }
 
     mPendingModel = std::move(wrapped);
@@ -569,25 +593,35 @@ void NAMixAudioProcessor::updateParametricRangesAndDefaults(
         apvts.getParameter(getParametricParamId(i)));
     if (!fp)
       continue;
-    if (i < numParams) {
+    // A malformed/degenerate model-supplied range (min >= max) would make
+    // convertTo0to1() divide by zero and propagate NaN into the parameter
+    // (and from there into the DSP via SetKnobValues). Fall back to a safe
+    // placeholder range instead of trusting the model file blindly.
+    if (i < numParams && defs[static_cast<size_t>(i)].max_val >
+                             defs[static_cast<size_t>(i)].min_val) {
       const auto &d = defs[static_cast<size_t>(i)];
       const float interval =
           d.steps > 1 ? (d.max_val - d.min_val) / static_cast<float>(d.steps - 1) : 0.0f;
       fp->range = juce::NormalisableRange<float>(d.min_val, d.max_val, interval);
       fp->setValueNotifyingHost(fp->convertTo0to1(d.default_val));
     } else {
+      // Inactive slot, or an invalid def for an active one: reset both the
+      // range and the stored value together so nothing is left pointing
+      // outside the range it's actually in (host generic-parameter views
+      // and saved state would otherwise see a stale, now out-of-bounds value).
       fp->range = juce::NormalisableRange<float>(0.0f, 1.0f);
+      fp->setValueNotifyingHost(0.5f);
     }
   }
 }
 
-std::vector<float> NAMixAudioProcessor::readKnobValuesFromApvts(int numParams) const {
-  std::vector<float> vals(static_cast<size_t>(numParams));
+void NAMixAudioProcessor::readKnobValuesFromApvtsInto(int numParams,
+                                                        std::vector<float> &out) const {
+  out.resize(static_cast<size_t>(numParams));
   for (int i = 0; i < numParams; ++i) {
     auto *raw = apvts.getRawParameterValue(getParametricParamId(i));
-    vals[static_cast<size_t>(i)] = raw ? raw->load() : 0.0f;
+    out[static_cast<size_t>(i)] = raw ? raw->load() : 0.0f;
   }
-  return vals;
 }
 
 // ---------------------------------------------------------------------------
@@ -607,11 +641,19 @@ void NAMixAudioProcessor::setStateInformation(const void *data, int sizeInBytes)
     return;
 
   auto newState = juce::ValueTree::fromXml(*xml);
-  apvts.replaceState(newState);
-
   const juce::String mp = newState.getProperty("modelPath", "");
   const juce::String ip = newState.getProperty("irPath", "");
 
+  // Load the model (and IR) BEFORE restoring the saved ValueTree below.
+  // loadModel() sets each parametric-knob slot's range to match this model
+  // and resets its value to the model's own default; if the saved state
+  // were restored first, this would immediately stomp the user's saved
+  // knob positions back to defaults. Loading first means replaceState()
+  // restores the real saved values on top of correctly-ranged parameters,
+  // and the parameterChanged() callbacks it fires for every value that
+  // differs from the fresh default mark mParamsDirty/mSlimDirty, so
+  // processBlock() re-applies the actual saved values to the live model
+  // (the same mechanism already relied on for the "slim" parameter).
   if (mp.isNotEmpty()) {
     juce::File f(mp);
     if (f.existsAsFile())
@@ -622,6 +664,8 @@ void NAMixAudioProcessor::setStateInformation(const void *data, int sizeInBytes)
     if (f.existsAsFile())
       loadIR(f);
   }
+
+  apvts.replaceState(newState);
 }
 
 // ---------------------------------------------------------------------------
