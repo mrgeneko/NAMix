@@ -149,3 +149,9 @@ target_compile_options(NAMixLinux PRIVATE
     -Wno-unused-parameter
     $<$<VERSION_LESS:$<CXX_COMPILER_VERSION>,13>:-fpermissive>
 )
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+enable_testing()
+add_subdirectory(tests)

@@ -512,3 +512,11 @@ void NAMixAudioProcessorEditor::chooseIRFile() {
                                 mIRRow.setLoadedFile(result, "wav");
                             });
 }
+
+// Lives here rather than in PluginProcessor.cpp so that the processor
+// doesn't need to depend on the GUI module (BinaryData, fonts,
+// juce_gui_basics) just to compile -- see the comment beside
+// createPluginFilter() in PluginProcessor.cpp.
+juce::AudioProcessorEditor *NAMixAudioProcessor::createEditor() {
+  return new NAMixAudioProcessorEditor(*this);
+}

@@ -11,9 +11,9 @@
  */
 
 #include "PluginProcessor.h"
-#include "PluginEditor.h"
 
 #include "NAM/get_dsp.h"
+#include "ParametricKnobLayout.h"
 
 // Compatibility shims required by the iPlug2-derived LanczosResampler that
 // AudioDSPTools' ResamplingContainer bundles.  These symbols are normally
@@ -608,9 +608,10 @@ void NAMixAudioProcessor::updateParametricRangesAndDefaults(
     // A malformed/degenerate model-supplied range (min >= max) would make
     // convertTo0to1() divide by zero and propagate NaN into the parameter
     // (and from there into the DSP via SetKnobValues). Fall back to a safe
-    // placeholder range instead of trusting the model file blindly.
-    if (i < numParams && defs[static_cast<size_t>(i)].max_val >
-                             defs[static_cast<size_t>(i)].min_val) {
+    // placeholder range instead of trusting the model file blindly. See
+    // ParametricRangeTests.cpp for the direct test of this condition.
+    if (i < numParams && isValidParametricRange(defs[static_cast<size_t>(i)].min_val,
+                                                defs[static_cast<size_t>(i)].max_val)) {
       const auto &d = defs[static_cast<size_t>(i)];
       const float interval =
           d.steps > 1 ? (d.max_val - d.min_val) / static_cast<float>(d.steps - 1) : 0.0f;
@@ -681,12 +682,13 @@ void NAMixAudioProcessor::setStateInformation(const void *data, int sizeInBytes)
 }
 
 // ---------------------------------------------------------------------------
-// Editor / plugin entry
+// Plugin entry
 // ---------------------------------------------------------------------------
-juce::AudioProcessorEditor *NAMixAudioProcessor::createEditor() {
-  return new NAMixAudioProcessorEditor(*this);
-}
-
+// createEditor() lives in PluginEditor.cpp: it's the only thing in this file
+// that would otherwise pull in the GUI module (BinaryData, fonts,
+// juce_gui_basics) as a dependency of the processor, which is undesirable
+// since it means the processor -- and the parametric-knob logic it owns --
+// can't be built or tested headlessly without the whole GUI stack.
 juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter() {
   return new NAMixAudioProcessor();
 }
