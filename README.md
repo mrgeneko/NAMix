@@ -1,5 +1,7 @@
 # NAMix
 
+[![Build](https://github.com/mrgeneko/NAMix/actions/workflows/build.yml/badge.svg)](https://github.com/mrgeneko/NAMix/actions/workflows/build.yml)
+
 NAMix is a neural amp modeller plugin for Linux. It is based on
 [NeuralAmpModelerPlugin](https://github.com/sdatkinson/NeuralAmpModelerPlugin)
 by Steven Atkinson and all contributors to the Neural Amp Modeler project.
