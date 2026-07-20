@@ -1,0 +1,37 @@
+NAMix changelog
+https://github.com/mrgeneko/NAMix
+
+Newest first.
+
+07/20/2026 - v0.5.0
+  - Parametric models: a model's own knobs and switches appear inline in the
+    plug-in, driven by mrgeneko/NeuralAmpModelerCore's parametric (FiLM
+    conditioning) support -- .nam files whose knobs respond live instead of
+    being baked in at training time. Ordinary .nam models are unaffected and
+    show no extra controls.
+  - Renamed to Anti-Static NAM (`Anti-Static NAM.vst3`, standalone
+    `Anti-Static NAM`), with its own bundle ID, so it installs alongside
+    other NAM-based plug-ins rather than replacing them.
+  - Parametric knob value readouts capped at two decimal places.
+  - Added a real release pipeline: tagged pushes now build, run the unit
+    test suite, package a `NAMix-<version>-linux-x86_64.tar.gz`, and publish
+    a GitHub Release with the demo parametric model attached.
+  - Added a unit test suite covering parametric-knob range validation,
+    state-restore ordering, and the inline knob-row layout math.
+
+06/12/2026 - v0.4.0
+  - Renamed the plug-in to NAMix.
+  - Packaging script (makedist-linux.sh) fixes.
+
+06/06/2026 - v0.3.0
+  - Added Devuan (Daedalus) to the supported build platforms.
+
+06/05/2026 - v0.2.0
+  - Standalone application, alongside the VST3 plug-in.
+  - GUI fixes: level meters, the slimmable-model icon, tone dials, titlebar
+    and tabs.
+
+06/05/2026 - v0.1.0
+  - Initial release: a Linux VST3 neural amp modeller built on JUCE, reusing
+    NeuralAmpModelerCore and AudioDSPTools for the DSP core.
+  - Noise gate, tone stack, and impulse-response loading.

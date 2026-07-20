@@ -32,6 +32,20 @@ jobs:
         with:
           submodules: recursive
 
+      # release_notes_header.md carries the Downloads / Before-you-install
+      # sections (asset name, glibc requirement) that changelog.txt itself
+      # doesn't have -- that's just the changelog.
+      # __VERSION__ is the CMakeLists.txt project version (e.g. "0.5.0"),
+      # NOT github.ref_name ("v0.5.0") -- makedist-linux.sh names the
+      # archive from CMakeLists.txt directly, with no "v" prefix, unlike
+      # NeuralAmpModelerPlugin's archives which match the tag exactly.
+      - name: Build release notes
+        run: |
+          VERSION="$(grep -oP '(?<=project\(namix-linux VERSION )\S+' CMakeLists.txt)"
+          sed "s/__VERSION__/$VERSION/g" release_notes_header.md > /tmp/release_notes.md
+          cat changelog.txt >> /tmp/release_notes.md
+        shell: bash
+
       # Creating the release up front (rather than letting the build job
       # create it) matters once there's more than one build job racing to
       # create the same one; kept as a separate job here too so the two
@@ -41,13 +55,16 @@ jobs:
           GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
         run: |
           if gh release view "${{github.ref_name}}" --repo "${{github.repository}}" >/dev/null 2>&1; then
-            echo "Release ${{github.ref_name}} already exists, reusing it."
+            echo "Release ${{github.ref_name}} already exists; updating its notes."
+            gh release edit "${{github.ref_name}}" \
+              --repo "${{github.repository}}" \
+              --notes-file /tmp/release_notes.md
           else
             gh release create "${{github.ref_name}}" \
               --repo "${{github.repository}}" \
               --draft \
               --title "NAMix ${{github.ref_name}}" \
-              --generate-notes
+              --notes-file /tmp/release_notes.md
           fi
         shell: bash
 
