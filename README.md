@@ -10,8 +10,8 @@ All original copyright is retained by Steven Atkinson.
 iPlug2, the framework used by the original plugin, does not currently support
 Linux. NAMix is a Linux port built using [JUCE](https://juce.com). Because
 JUCE is used, this project is released under the GNU General Public Licence v3.
-See [LICENSE](https://github.com/rations/NAMix/blob/master/LICENSE) and
-[NOTICE](https://github.com/rations/NAMix/blob/master/NOTICE) for full
+See [LICENSE](https://github.com/mrgeneko/NAMix/blob/master/LICENSE) and
+[NOTICE](https://github.com/mrgeneko/NAMix/blob/master/NOTICE) for full
 details.
 
 This fork builds against [Gene Ko's fork of
@@ -63,7 +63,7 @@ should build from source (see below).
 ## Installing the pre-built release
 
 Download `NAMix-0.4.0-linux-x86_64.tar.gz` from the
-[Releases page](https://github.com/rations/NAMix/releases).
+[Releases page](https://github.com/mrgeneko/NAMix/releases).
 
 Extract the archive:
 
@@ -110,7 +110,7 @@ rm -rf ~/.vst3/"Anti-Static NAM.vst3" ~/NAMix-0.4.0
 ## Building from source
 
 ```bash
-git clone https://github.com/rations/NAMix.git
+git clone https://github.com/mrgeneko/NAMix.git
 cd NAMix
 git submodule update --init --recursive
 
@@ -141,7 +141,7 @@ Or run the standalone directly:
 ```
 
 To build and package a release archive (produces
-`NAMix-0.3.0-linux-x86_64.tar.gz` in the repo root):
+`dist/NAMix-<version>-linux-<arch>.tar.gz`):
 
 ```bash
 bash scripts/makedist-linux.sh
@@ -184,7 +184,7 @@ bash scripts/makedist-linux.sh
 ## Licence
 
 NAMix is free software released under the
-[GNU General Public Licence v3](https://github.com/rations/NAMix/blob/master/LICENSE).
+[GNU General Public Licence v3](https://github.com/mrgeneko/NAMix/blob/master/LICENSE).
 
 The Neural Amp Modeler DSP core, original plugin code, and graphical assets
 are copyright Steven Atkinson and used under the MIT Licence. The DSP core's
@@ -192,5 +192,5 @@ parametric model additions are copyright Gene Ko (fork modifications), also
 under the MIT Licence.
 The fonts Michroma (OFL 1.1) and Roboto (Apache 2.0) are embedded under their
 respective open licences.
-See [NOTICE](https://github.com/rations/NAMix/blob/master/NOTICE) for
+See [NOTICE](https://github.com/mrgeneko/NAMix/blob/master/NOTICE) for
 full attribution and licence texts.

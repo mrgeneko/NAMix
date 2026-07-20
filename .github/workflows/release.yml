@@ -1,0 +1,109 @@
+name: Release
+
+# Publishes a GitHub Release for a pushed version tag, mirroring the
+# create-release-then-build split used by mrgeneko/NeuralAmpModelerPlugin's
+# release-native.yml (the macOS/Windows counterpart to this Linux build).
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+# The repository default for GITHUB_TOKEN is read-only, so creating a release
+# and uploading its assets both fail with "Resource not accessible by
+# integration". Scope the write here rather than loosening the repo-wide
+# default, which would also apply to build.yml.
+permissions:
+  contents: write
+
+jobs:
+  create_release:
+    name: Create release
+    runs-on: ubuntu-latest
+    # Release names come from the ref, so dispatching this against a branch
+    # would create a release tagged "master". workflow_dispatch can still
+    # target a tag -- pick one in the ref dropdown -- which is the useful
+    # case, e.g. re-running a release whose build failed.
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # Creating the release up front (rather than letting the build job
+      # create it) matters once there's more than one build job racing to
+      # create the same one; kept as a separate job here too so the two
+      # repos stay structurally comparable.
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        run: |
+          if gh release view "${{github.ref_name}}" --repo "${{github.repository}}" >/dev/null 2>&1; then
+            echo "Release ${{github.ref_name}} already exists, reusing it."
+          else
+            gh release create "${{github.ref_name}}" \
+              --repo "${{github.repository}}" \
+              --draft \
+              --title "NAMix ${{github.ref_name}}" \
+              --generate-notes
+          fi
+        shell: bash
+
+      # The demo parametric model the settings-page knobs exist to drive.
+      # Nothing installs a model, so without this a user has no way to
+      # exercise that feature on a fresh install.
+      - name: Upload demo parametric model
+        env:
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        run: |
+          gh release upload "${{github.ref_name}}" \
+            ParametricModels/muffinator_v4_optimal.param.nam \
+            --repo "${{github.repository}}" \
+            --clobber
+        shell: bash
+
+  build:
+    name: Build and package (Linux)
+    needs: create_release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake pkg-config \
+            libx11-dev libxext-dev libxcursor-dev libxrandr-dev libxinerama-dev \
+            libgl-dev libfreetype-dev libfontconfig-dev libpng-dev zlib1g-dev \
+            libcurl4-openssl-dev libasound2-dev libwebkit2gtk-4.1-dev
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --parallel "$(nproc)"
+
+      - name: Run unit tests
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Package release archive
+        run: bash scripts/makedist-linux.sh
+
+      # gh upload fails on a missing/unmatched path, so a packaging step that
+      # silently produced no tarball fails the job here rather than finishing
+      # green with nothing attached to the release.
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        run: |
+          gh release upload "${{github.ref_name}}" \
+            dist/NAMix-*-linux-*.tar.gz \
+            --repo "${{github.repository}}" \
+            --clobber
+        shell: bash
