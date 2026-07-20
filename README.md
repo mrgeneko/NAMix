@@ -9,7 +9,7 @@ All original copyright is retained by Steven Atkinson.
 
 iPlug2, the framework used by the original plugin, does not currently support
 Linux. NAMix is a Linux port built using [JUCE](https://juce.com). Because
-JUCE is used, this project is released under the GNU General Public Licence v3.
+JUCE is used, this project is released under the GNU General Public License v3.
 See [LICENSE](https://github.com/mrgeneko/NAMix/blob/master/LICENSE) and
 [NOTICE](https://github.com/mrgeneko/NAMix/blob/master/NOTICE) for full
 details.
@@ -181,16 +181,16 @@ bash scripts/makedist-linux.sh
 
 ---
 
-## Licence
+## License
 
 NAMix is free software released under the
-[GNU General Public Licence v3](https://github.com/mrgeneko/NAMix/blob/master/LICENSE).
+[GNU General Public License v3](https://github.com/mrgeneko/NAMix/blob/master/LICENSE).
 
 The Neural Amp Modeler DSP core, original plugin code, and graphical assets
-are copyright Steven Atkinson and used under the MIT Licence. The DSP core's
+are copyright Steven Atkinson and used under the MIT License. The DSP core's
 parametric model additions are copyright Gene Ko (fork modifications), also
-under the MIT Licence.
+under the MIT License.
 The fonts Michroma (OFL 1.1) and Roboto (Apache 2.0) are embedded under their
-respective open licences.
+respective open licenses.
 See [NOTICE](https://github.com/mrgeneko/NAMix/blob/master/NOTICE) for
-full attribution and licence texts.
+full attribution and license texts.
