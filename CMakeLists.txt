@@ -1,6 +1,6 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.24)  # $<LINK_LIBRARY:WHOLE_ARCHIVE,...> needs 3.24+
 
-project(namix-linux VERSION 0.5.0 LANGUAGES CXX C)
+project(namix VERSION 0.5.0 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -13,13 +13,14 @@ add_subdirectory(JUCE)
 
 # ---------------------------------------------------------------------------
 # NeuralAmpModelerCore + AudioDSPTools — compiled as a static library and
-# linked with --whole-archive.
+# WHOLE_ARCHIVE-linked (see target_link_libraries below).
 #
 # Each architecture (WaveNet, LSTM, ConvNet) self-registers via a file-scope
-# static ConfigParserHelper.  On Linux the VST3 is a shared library, and the
-# linker drops object files whose only content is an unreferenced static
-# initialiser.  --whole-archive forces every .o in the archive to be linked,
-# ensuring all registration side-effects execute at plugin load time.
+# static ConfigParserHelper. Every plugin format here (VST3/AU shared library,
+# Standalone executable) is built by a linker that, by default, drops object
+# files whose only content is an unreferenced static initialiser -- forcing
+# the whole archive in ensures all registration side-effects execute at
+# plugin load time regardless of platform.
 # ---------------------------------------------------------------------------
 add_library(NamDsp STATIC
     NeuralAmpModelerCore/NAM/activations.cpp
@@ -53,7 +54,16 @@ target_include_directories(NamDsp PUBLIC
     eigen
 )
 
-target_compile_options(NamDsp PRIVATE -ffast-math -Wno-unused-parameter -fPIC $<$<VERSION_LESS:$<CXX_COMPILER_VERSION>,13>:-fpermissive>)
+# GNU/Clang-only flags, guarded on compiler ID (not just version): -fpermissive's own
+# version check used to run unconditionally, so a Clang build whose (unrelated) version
+# numbering happened to read < 13 would have picked up a GCC-only flag Clang doesn't
+# support -- it never bit us here only because AppleClang reports a version far above 13.
+# No MSVC equivalent is added for -ffast-math/-fPIC here: NamDsp is a small vendored DSP
+# core, not the perf-critical audio-callback path (that's NAMix's own target below).
+target_compile_options(NamDsp PRIVATE
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-ffast-math -Wno-unused-parameter -fPIC>
+    $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,13>>:-fpermissive>
+)
 
 # ---------------------------------------------------------------------------
 # Embedded font resources (Michroma-Regular and Roboto-Regular, copied from
@@ -74,12 +84,20 @@ juce_add_binary_data(NAMixBinaryData SOURCES
 # ---------------------------------------------------------------------------
 # Plugin definition
 # ---------------------------------------------------------------------------
-juce_add_plugin(NAMixLinux
+# AU only makes sense (and only builds) on macOS -- Logic Pro/GarageBand support ONLY AU,
+# not VST3 at all, so this is required for Mac feature parity with the iPlug2-based
+# "Anti-Static" build, not just a nice-to-have.
+set(NAMIX_FORMATS VST3 Standalone)
+if(APPLE)
+    list(APPEND NAMIX_FORMATS AU)
+endif()
+
+juce_add_plugin(NAMix
     COMPANY_NAME               "Gene Ko"
     BUNDLE_ID                  "com.geneko.antistaticnam"
     PLUGIN_MANUFACTURER_CODE   NMIX
     PLUGIN_CODE                Nmix
-    FORMATS                    VST3 Standalone
+    FORMATS                    ${NAMIX_FORMATS}
     NEEDS_STANDALONE           TRUE
     PRODUCT_NAME               "Anti-Static NAM"
     IS_SYNTH                   FALSE
@@ -89,12 +107,13 @@ juce_add_plugin(NAMixLinux
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     COPY_PLUGIN_AFTER_BUILD    FALSE
     VST3_CATEGORIES            "Fx"
+    AU_MAIN_TYPE               "kAudioUnitType_Effect"
 )
 
 # ---------------------------------------------------------------------------
 # Sources
 # ---------------------------------------------------------------------------
-target_sources(NAMixLinux PRIVATE
+target_sources(NAMix PRIVATE
     src/PluginProcessor.cpp
     src/PluginEditor.cpp
     src/ToneStack.cpp
@@ -103,7 +122,7 @@ target_sources(NAMixLinux PRIVATE
 # ---------------------------------------------------------------------------
 # Compile definitions
 # ---------------------------------------------------------------------------
-target_compile_definitions(NAMixLinux
+target_compile_definitions(NAMix
     PUBLIC
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
@@ -111,29 +130,36 @@ target_compile_definitions(NAMixLinux
         NAM_ENABLE_A2_FAST
 )
 
-# NamDsp's PUBLIC include paths flow into NAMixLinux automatically via the
+# NamDsp's PUBLIC include paths flow into NAMix automatically via the
 # target_link_libraries below, so no need to repeat them here.
 
 # ---------------------------------------------------------------------------
 # Include paths
 # ---------------------------------------------------------------------------
-target_include_directories(NAMixLinux PRIVATE
+target_include_directories(NAMix PRIVATE
     src
 )
 
 # ---------------------------------------------------------------------------
 # Link libraries
 # ---------------------------------------------------------------------------
-target_link_libraries(NAMixLinux
+target_link_libraries(NAMix
     PRIVATE
-        # --whole-archive ensures every .o in NamDsp is linked into the VST3
-        # .so, so that static-initialiser registrations (WaveNet, LSTM, etc.)
-        # always execute at plugin load time regardless of LTO / --as-needed.
-        -Wl,--whole-archive NamDsp -Wl,--no-whole-archive
+        # WHOLE_ARCHIVE ensures every .o in NamDsp is linked into the plugin binary, so
+        # that static-initialiser registrations (WaveNet, LSTM, etc.) always execute at
+        # plugin load time regardless of LTO / --as-needed / dead-code stripping. The
+        # $<LINK_LIBRARY:WHOLE_ARCHIVE,...> generator expression (CMake 3.24+) picks the
+        # right underlying syntax per platform: -Wl,--whole-archive/--no-whole-archive
+        # (GNU ld, Linux), -Wl,-force_load,<path> (Apple's linker, macOS), /WHOLEARCHIVE:
+        # (MSVC, Windows) -- a hand-rolled single flag pair only ever worked on Linux.
+        $<LINK_LIBRARY:WHOLE_ARCHIVE,NamDsp>
         NAMixBinaryData
         juce::juce_audio_utils
         juce::juce_opengl
-        stdc++fs
+        # GCC's <filesystem> needed a separate libstdc++fs.a before GCC 9; harmless to
+        # keep for older Linux toolchains, but the library doesn't exist for AppleClang/
+        # libc++ (macOS) or MSVC (Windows) and linking it there is a hard error.
+        $<$<AND:$<PLATFORM_ID:Linux>,$<CXX_COMPILER_ID:GNU>>:stdc++fs>
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
@@ -143,11 +169,14 @@ target_link_libraries(NAMixLinux
 # ---------------------------------------------------------------------------
 # Compiler flags
 # ---------------------------------------------------------------------------
-target_compile_options(NAMixLinux PRIVATE
-    -ffast-math
-    -Wall
-    -Wno-unused-parameter
-    $<$<VERSION_LESS:$<CXX_COMPILER_VERSION>,13>:-fpermissive>
+# See NamDsp's own target_compile_options above for why these are gated on compiler ID,
+# not just version. MSVC gets /fp:fast as the -ffast-math equivalent -- this target IS the
+# perf-critical audio-callback path, unlike NamDsp, so it's worth the explicit Windows case
+# rather than silently dropping the optimization there.
+target_compile_options(NAMix PRIVATE
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-ffast-math;-Wall;-Wno-unused-parameter>
+    $<$<CXX_COMPILER_ID:MSVC>:/fp:fast>
+    $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,13>>:-fpermissive>
 )
 
 # ---------------------------------------------------------------------------

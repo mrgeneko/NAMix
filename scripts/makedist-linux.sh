@@ -6,19 +6,21 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cmake -B "$REPO/build" -DCMAKE_BUILD_TYPE=Release -S "$REPO"
 cmake --build "$REPO/build" --parallel "$(nproc)"
 
-VERSION="$(grep -oP '(?<=project\(namix-linux VERSION )\S+' "$REPO/CMakeLists.txt")"
+# sed -E, not grep -P: portable across BSD sed (macOS) and GNU sed (Linux), unlike -P
+# (PCRE/lookbehind, GNU-grep-only) -- all three platform scripts use this same form.
+VERSION="$(sed -n -E 's/^project\(namix VERSION ([^ ]+).*/\1/p' "$REPO/CMakeLists.txt")"
 ARCH="$(uname -m)"
 STAGEDIR="$(mktemp -d)"
 PKGDIR="$STAGEDIR/NAMix-${VERSION}"
 mkdir -p "$PKGDIR"
 
 # VST3 bundle — strip the shared library inside the bundle
-BUNDLE="$REPO/build/NAMixLinux_artefacts/Release/VST3/Anti-Static NAM.vst3"
+BUNDLE="$REPO/build/NAMix_artefacts/Release/VST3/Anti-Static NAM.vst3"
 find "$BUNDLE" -name "*.so" -exec strip --strip-unneeded {} \;
 cp -r "$BUNDLE" "$PKGDIR/"
 
 # Standalone binary
-STANDALONE="$REPO/build/NAMixLinux_artefacts/Release/Standalone/Anti-Static NAM"
+STANDALONE="$REPO/build/NAMix_artefacts/Release/Standalone/Anti-Static NAM"
 if [ -f "$STANDALONE" ]; then
   strip --strip-unneeded "$STANDALONE"
   cp "$STANDALONE" "$PKGDIR/"

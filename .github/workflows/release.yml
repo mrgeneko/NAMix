@@ -41,7 +41,7 @@ jobs:
       # NeuralAmpModelerPlugin's archives which match the tag exactly.
       - name: Build release notes
         run: |
-          VERSION="$(grep -oP '(?<=project\(namix-linux VERSION )\S+' CMakeLists.txt)"
+          VERSION="$(sed -n -E 's/^project\(namix VERSION ([^ ]+).*/\1/p' CMakeLists.txt)"
           sed "s/__VERSION__/$VERSION/g" release_notes_header.md > /tmp/release_notes.md
           cat changelog.txt >> /tmp/release_notes.md
         shell: bash
@@ -81,7 +81,7 @@ jobs:
             --clobber
         shell: bash
 
-  build:
+  build-linux:
     name: Build and package (Linux)
     needs: create_release
     runs-on: ubuntu-latest
@@ -109,6 +109,9 @@ jobs:
       - name: Run unit tests
         run: ctest --test-dir build --output-on-failure
 
+      # Runs its own cmake configure/build again (fast: incremental, nothing changed since
+      # the steps above) -- kept self-contained so the script also works standalone for a
+      # local release build, not just from this job.
       - name: Package release archive
         run: bash scripts/makedist-linux.sh
 
@@ -124,3 +127,67 @@ jobs:
             --repo "${{github.repository}}" \
             --clobber
         shell: bash
+
+  build-macos:
+    name: Build and package (macOS)
+    needs: create_release
+    runs-on: macos-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --parallel "$(sysctl -n hw.ncpu)"
+
+      - name: Run unit tests
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Package release archive
+        run: bash scripts/makedist-macos.sh
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        run: |
+          gh release upload "${{github.ref_name}}" \
+            dist/NAMix-*-macos-*.zip \
+            --repo "${{github.repository}}" \
+            --clobber
+        shell: bash
+
+  build-windows:
+    name: Build and package (Windows)
+    needs: create_release
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure
+        run: cmake -B build -A x64
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Run unit tests
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Package release archive
+        run: ./scripts/makedist-windows.ps1
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        run: |
+          gh release upload "${{github.ref_name}}" `
+            (Get-Item dist/NAMix-*-windows-*.zip) `
+            --repo "${{github.repository}}" `
+            --clobber
+        shell: pwsh

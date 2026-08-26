@@ -2,15 +2,17 @@
 
 [![Build](https://github.com/mrgeneko/NAMix/actions/workflows/build.yml/badge.svg)](https://github.com/mrgeneko/NAMix/actions/workflows/build.yml)
 
-NAMix is a neural amp modeller plugin for Linux. It is based on
-[NeuralAmpModelerPlugin](https://github.com/sdatkinson/NeuralAmpModelerPlugin)
+NAMix is a cross-platform (Linux, macOS, Windows) neural amp modeller plugin. It is
+based on [NeuralAmpModelerPlugin](https://github.com/sdatkinson/NeuralAmpModelerPlugin)
 by Steven Atkinson and all contributors to the Neural Amp Modeler project.
 All original copyright is retained by Steven Atkinson.
 
-iPlug2, the framework used by the original plugin, does not currently support
-Linux. NAMix is a Linux port built using [JUCE](https://juce.com). Because
-JUCE is used, this project is released under the GNU General Public License v3.
-See [LICENSE](https://github.com/mrgeneko/NAMix/blob/master/LICENSE) and
+iPlug2, the framework the original plugin uses, doesn't support Linux -- NAMix
+started as a Linux port built on [JUCE](https://juce.com) instead, and now covers
+all three desktop platforms from that same JUCE codebase (one CMakeLists.txt, no
+platform-specific plugin code -- see "Building from source" below). Because JUCE
+is used, this project is released under the GNU General Public License v3. See
+[LICENSE](https://github.com/mrgeneko/NAMix/blob/master/LICENSE) and
 [NOTICE](https://github.com/mrgeneko/NAMix/blob/master/NOTICE) for full
 details.
 
@@ -27,18 +29,29 @@ build.
 
 ![NAMix standalone](standalone.png)
 
-NAMix ships as two separate binaries:
+NAMix ships these binaries (macOS gets all three; Linux and Windows get the first two):
 
 | Binary | Use |
 |---|---|
 | `Anti-Static NAM.vst3` | VST3 plugin — load inside a DAW (REAPER, Ardour, Bitwig, Carla, …) |
 | `Anti-Static NAM` (standalone) | Standalone application — runs without a DAW, connects directly to your audio interface |
+| `Anti-Static NAM.component` (macOS only) | Audio Unit — needed for Logic Pro/GarageBand, which don't support VST3 at all |
 
 ---
 
 ## System requirements
 
-NAMix requires **glibc 2.35 or later**. This is present in:
+**macOS**: Apple Silicon or Intel. Release builds are ad-hoc signed, not notarized --
+see "Before you install" in each release's notes for the one-time Gatekeeper workaround.
+No specific minimum OS version is pinned in the build yet (CI builds against whatever
+SDK/deployment target the runner's Xcode defaults to); if you hit a "too old" load error
+on an older macOS, please open an issue.
+
+**Windows**: 64-bit (x86_64) Windows 10 or 11. Release builds are not code-signed --
+the standalone `.exe` raises a SmartScreen warning on first run (choose **More info**,
+then **Run anyway**).
+
+**Linux**: requires **glibc 2.35 or later**. This is present in:
 
 | Distro | Version |
 |---|---|
@@ -62,10 +75,13 @@ should build from source (see below).
 
 ## Installing the pre-built release
 
-Download `NAMix-0.5.0-linux-x86_64.tar.gz` from the
-[Releases page](https://github.com/mrgeneko/NAMix/releases).
+All platforms: download the archive for your OS from the
+[Releases page](https://github.com/mrgeneko/NAMix/releases). The standalone app
+saves its last state (loaded model, IR, and all knob positions) automatically when
+you close the window, and shows an audio-settings dialog on first launch (**File →
+Preferences** reopens it later).
 
-Extract the archive:
+### Linux
 
 ```bash
 tar -xzf NAMix-0.5.0-linux-x86_64.tar.gz
@@ -90,14 +106,7 @@ dependencies need to be installed.
 "./NAMix-0.5.0/Anti-Static NAM"
 ```
 
-On first launch, NAMix open audio settings
-dialog where you select your ALSA or JACK device and sample rate. These
-settings are saved and restored on subsequent launches. The standalone window
-includes a **File → Preferences** menu to reopen the audio settings at any
-time.
-
-The standalone saves its last state (loaded model, IR, and all knob positions)
-automatically when you close the window.
+The audio-settings dialog lets you pick your ALSA or JACK device and sample rate.
 
 To uninstall:
 
@@ -105,15 +114,73 @@ To uninstall:
 rm -rf ~/.vst3/"Anti-Static NAM.vst3" ~/NAMix-0.5.0
 ```
 
+### macOS
+
+```bash
+unzip NAMix-0.5.0-macos-arm64.zip   # or -x86_64 on Intel Macs
+```
+
+This creates a `NAMix-0.5.0/` directory containing the VST3, the Audio Unit, and
+the standalone app. Install whichever you need:
+
+```bash
+mkdir -p ~/Library/Audio/Plug-Ins/VST3 ~/Library/Audio/Plug-Ins/Components
+cp -r "NAMix-0.5.0/Anti-Static NAM.vst3" ~/Library/Audio/Plug-Ins/VST3/
+cp -r "NAMix-0.5.0/Anti-Static NAM.component" ~/Library/Audio/Plug-Ins/Components/
+```
+
+The Audio Unit is required for Logic Pro/GarageBand, which don't support VST3 at
+all; other DAWs (Ableton Live, Reaper, Bitwig, …) can use either. Rescan plug-ins
+in your DAW afterward.
+
+Since these builds are ad-hoc signed rather than notarized, the first launch of
+either the standalone app or a DAW scanning the plugin will trigger a Gatekeeper
+warning ("cannot be opened because the developer cannot be verified"). Right-click
+(Control-click) it, choose **Open**, and confirm — needed only once per binary.
+
+**Standalone application**:
+
+```bash
+open "NAMix-0.5.0/Anti-Static NAM.app"
+```
+
+### Windows
+
+Unzip `NAMix-0.5.0-windows-x86_64.zip`. This creates a `NAMix-0.5.0\` directory
+containing the VST3 and the standalone app.
+
+**VST3 plugin** — copy the whole `.vst3` folder into your VST3 directory:
+
+```
+copy /E "NAMix-0.5.0\Anti-Static NAM.vst3" "%COMMONPROGRAMFILES%\VST3\Anti-Static NAM.vst3"
+```
+
+(or `%LOCALAPPDATA%\Programs\Common\VST3` if you'd rather not need admin rights),
+then rescan plug-ins in your DAW.
+
+**Standalone application** — run `Anti-Static NAM.exe` directly; it isn't
+code-signed, so the first launch raises a SmartScreen warning (**More info** →
+**Run anyway**).
+
 ---
 
 ## Building from source
+
+One `CMakeLists.txt`, one plugin source tree, no platform-specific plugin code --
+Linux/macOS/Windows differ only in a handful of build-system details (documented
+inline in `CMakeLists.txt`: WHOLE_ARCHIVE linking syntax, AU only existing on
+macOS, MSVC's differently-named fast-math flag). Build artifacts land under
+`build/NAMix_artefacts/Release/<VST3|AU|Standalone>/`.
 
 ```bash
 git clone https://github.com/mrgeneko/NAMix.git
 cd NAMix
 git submodule update --init --recursive
+```
 
+### Linux
+
+```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel $(nproc)
 ```
@@ -131,13 +198,13 @@ After building, install the VST3:
 
 ```bash
 mkdir -p ~/.vst3
-cp -r "build/NAMixLinux_artefacts/Release/VST3/Anti-Static NAM.vst3" ~/.vst3/
+cp -r "build/NAMix_artefacts/Release/VST3/Anti-Static NAM.vst3" ~/.vst3/
 ```
 
 Or run the standalone directly:
 
 ```bash
-"build/NAMixLinux_artefacts/Release/Standalone/Anti-Static NAM"
+"build/NAMix_artefacts/Release/Standalone/Anti-Static NAM"
 ```
 
 To build and package a release archive (produces
@@ -145,6 +212,39 @@ To build and package a release archive (produces
 
 ```bash
 bash scripts/makedist-linux.sh
+```
+
+### macOS
+
+Requires Xcode (for the toolchain/SDKs) and CMake 3.24+.
+
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel "$(sysctl -n hw.ncpu)"
+```
+
+Builds `NAMix_artefacts/Release/{VST3,AU,Standalone}/` -- the Audio Unit is only
+built here, on macOS. Package a release archive with:
+
+```bash
+bash scripts/makedist-macos.sh   # dist/NAMix-<version>-macos-<arch>.zip
+```
+
+### Windows
+
+Requires Visual Studio (the C++ desktop workload) and CMake 3.24+.
+
+```powershell
+cmake -B build -A x64
+cmake --build build --config Release --parallel
+```
+
+Visual Studio is a multi-config generator -- `--config Release` (not
+`CMAKE_BUILD_TYPE`) selects the build configuration, and `ctest` needs a matching
+`-C Release`. Package a release archive with:
+
+```powershell
+.\scripts\makedist-windows.ps1   # dist\NAMix-<version>-windows-x86_64.zip
 ```
 
 ---

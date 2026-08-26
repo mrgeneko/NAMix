@@ -4,6 +4,13 @@ name: Build
 # mrgeneko/NeuralAmpModelerCore's build.yml, plus the unit test suite
 # (tests/) covering the parametric-knob logic: range validation, the
 # state-restore ordering, and the row-packing math.
+#
+# Three platforms, one CMakeLists.txt: the plugin source itself has no
+# platform-specific code (it's plain JUCE), so macOS/Windows are just two
+# more CMake configure/build/test passes, not a separate codebase. See
+# CMakeLists.txt's own comments for the handful of build-system details that
+# genuinely differ per platform (WHOLE_ARCHIVE linking, AU only existing on
+# macOS, MSVC's differently-named fast-math flag).
 
 on:
   push:
@@ -40,9 +47,68 @@ jobs:
       - name: Verify build artifacts exist
         run: |
           set -euo pipefail
-          vst3="build/NAMixLinux_artefacts/Release/VST3/Anti-Static NAM.vst3/Contents/x86_64-linux/Anti-Static NAM.so"
-          standalone="build/NAMixLinux_artefacts/Release/Standalone/Anti-Static NAM"
+          vst3="build/NAMix_artefacts/Release/VST3/Anti-Static NAM.vst3/Contents/x86_64-linux/Anti-Static NAM.so"
+          standalone="build/NAMix_artefacts/Release/Standalone/Anti-Static NAM"
           test -f "$vst3"
           test -f "$standalone"
           file "$vst3"
           file "$standalone"
+
+  build-macos:
+    name: Build macOS (VST3 + AU + Standalone)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --parallel "$(sysctl -n hw.ncpu)"
+
+      - name: Run unit tests
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Verify build artifacts exist
+        run: |
+          set -euo pipefail
+          vst3="build/NAMix_artefacts/Release/VST3/Anti-Static NAM.vst3/Contents/MacOS/Anti-Static NAM"
+          au="build/NAMix_artefacts/Release/AU/Anti-Static NAM.component/Contents/MacOS/Anti-Static NAM"
+          standalone="build/NAMix_artefacts/Release/Standalone/Anti-Static NAM.app/Contents/MacOS/Anti-Static NAM"
+          test -f "$vst3"
+          test -f "$au"
+          test -f "$standalone"
+          file "$vst3" "$au" "$standalone"
+
+  build-windows:
+    name: Build Windows (VST3 + Standalone)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # Visual Studio is a multi-config generator: CMAKE_BUILD_TYPE has no effect on it
+      # (unlike the single-config Makefiles/Ninja generators Linux/macOS use above) --
+      # --config/-C select Release at build and test time instead. -A x64 pins the
+      # architecture explicitly rather than relying on whichever default the runner's
+      # installed VS version picks.
+      - name: Configure
+        run: cmake -B build -A x64
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Run unit tests
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Verify build artifacts exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          vst3="build/NAMix_artefacts/Release/VST3/Anti-Static NAM.vst3/Contents/x86_64-win/Anti-Static NAM.vst3"
+          standalone="build/NAMix_artefacts/Release/Standalone/Anti-Static NAM.exe"
+          test -f "$vst3"
+          test -f "$standalone"

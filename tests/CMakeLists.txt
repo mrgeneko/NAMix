@@ -31,7 +31,7 @@ target_include_directories(NAMixTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
 # (normally supplied by juce_add_plugin()); a placeholder here is enough
 # since these tests never call it.
 #
-# JUCE_WEB_BROWSER=0 matches NAMixLinux's own setting (root CMakeLists.txt):
+# JUCE_WEB_BROWSER=0 matches the main plugin target's own setting (root CMakeLists.txt):
 # without it, juce_gui_extra.cpp's #include <gtk/gtk.h> (behind
 # `#elif (JUCE_LINUX || JUCE_BSD) && JUCE_WEB_BROWSER`) is compiled in, which
 # needs webkit2gtk's GTK dev headers -- unrelated to anything these tests
@@ -43,8 +43,10 @@ target_compile_definitions(NAMixTests PRIVATE
     NAMIX_TEST_MODELS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../ParametricModels"
 )
 
+# Gated on compiler ID, not just version -- see the matching comment on NamDsp's own
+# target_compile_options in the root CMakeLists.txt for why a bare version check is wrong.
 target_compile_options(NAMixTests PRIVATE
-    $<$<VERSION_LESS:$<CXX_COMPILER_VERSION>,13>:-fpermissive>)
+    $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,13>>:-fpermissive>)
 
 target_link_libraries(NAMixTests PRIVATE
     juce::juce_core
@@ -52,11 +54,14 @@ target_link_libraries(NAMixTests PRIVATE
     juce::juce_data_structures
     juce::juce_audio_basics
     juce::juce_audio_processors
-    # --whole-archive: StateRestoreTests.cpp calls nam::get_dsp() on a real
+    # WHOLE_ARCHIVE: StateRestoreTests.cpp calls nam::get_dsp() on a real
     # .nam file, which needs the architecture self-registration static
-    # initialisers (see the matching comment on NAMixLinux's own link line
-    # in the root CMakeLists.txt) to have actually run.
-    -Wl,--whole-archive NamDsp -Wl,--no-whole-archive
+    # initialisers (see the matching comment on the main plugin target's own
+    # link line in the root CMakeLists.txt) to have actually run. Uses the
+    # same cross-platform $<LINK_LIBRARY:WHOLE_ARCHIVE,...> generator
+    # expression as the root CMakeLists.txt -- see that comment for why a
+    # hand-rolled -Wl,--whole-archive pair only ever worked on Linux.
+    $<LINK_LIBRARY:WHOLE_ARCHIVE,NamDsp>
 )
 
 add_test(NAME NAMixTests COMMAND NAMixTests)
