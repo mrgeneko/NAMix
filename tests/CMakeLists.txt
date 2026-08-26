@@ -41,6 +41,10 @@ target_compile_definitions(NAMixTests PRIVATE
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     NAMIX_TEST_MODELS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../ParametricModels"
+    # This target also compiles ../src/PluginProcessor.cpp directly (see target_sources
+    # above) -- same std::max()-vs-<windows.h> collision as the main plugin target's own
+    # NOMINMAX definition in the root CMakeLists.txt; see that comment for the full story.
+    $<$<PLATFORM_ID:Windows>:NOMINMAX;WIN32_LEAN_AND_MEAN>
 )
 
 # Gated on compiler ID, not just version -- see the matching comment on NamDsp's own

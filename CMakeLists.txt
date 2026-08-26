@@ -44,7 +44,17 @@ add_library(NamDsp STATIC
     AudioDSPTools/dsp/wav.cpp
 )
 
-target_compile_definitions(NamDsp PUBLIC NAM_ENABLE_A2_FAST)
+# NOMINMAX/WIN32_LEAN_AND_MEAN, Windows-only: <windows.h>'s own min/max macros collide with
+# any std::max/std::min call in scope for the rest of that translation unit (MSVC error
+# C2589/C2760/C3878, "illegal token on right side of '::'" -- a std::max(...) call gets
+# macro-expanded into garbage). Found on real Windows CI: AudioDSPTools's LanczosResampler.h
+# (std::max(res + 1.0, 0.0)) and this repo's own PluginProcessor.cpp (std::max(peak, ...))
+# both hit it. PUBLIC so it propagates to anything linking NamDsp (NAMix, NAMixTests), which
+# both also have their own std::max/std::min calls needing the same protection.
+target_compile_definitions(NamDsp PUBLIC
+    NAM_ENABLE_A2_FAST
+    $<$<PLATFORM_ID:Windows>:NOMINMAX;WIN32_LEAN_AND_MEAN>
+)
 
 target_include_directories(NamDsp PUBLIC
     NeuralAmpModelerCore
@@ -128,6 +138,10 @@ target_compile_definitions(NAMix
         JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0
         NAM_ENABLE_A2_FAST
+        # Belt-and-suspenders with NamDsp's own PUBLIC definition of these (see that
+        # target's comment) -- PluginProcessor.cpp has its own std::max() call that needs
+        # the same protection, independent of anything propagated from linking NamDsp.
+        $<$<PLATFORM_ID:Windows>:NOMINMAX;WIN32_LEAN_AND_MEAN>
 )
 
 # NamDsp's PUBLIC include paths flow into NAMix automatically via the
