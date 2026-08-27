@@ -118,6 +118,13 @@ juce_add_plugin(NAMix
     COPY_PLUGIN_AFTER_BUILD    FALSE
     VST3_CATEGORIES            "Fx"
     AU_MAIN_TYPE               "kAudioUnitType_Effect"
+    # Without this, the generated Info.plist has no NSMicrophoneUsageDescription key at
+    # all, and macOS's privacy system silently denies the Standalone app real audio-input
+    # access -- no permission prompt, no error, just silence from whatever interface is
+    # selected (e.g. a Scarlett 2i2). Only affects the Standalone target's Info.plist
+    # (VST3/AU inherit the host's own mic permission, already granted to the DAW).
+    MICROPHONE_PERMISSION_ENABLED TRUE
+    MICROPHONE_PERMISSION_TEXT    "Anti-Static NAM needs microphone/audio-input access to process your guitar or instrument signal."
 )
 
 # ---------------------------------------------------------------------------
