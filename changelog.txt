@@ -3,6 +3,20 @@ https://github.com/mrgeneko/NAMix
 
 Newest first.
 
+08/27/2026 - v0.6.0
+  - Cross-platform build: macOS and Windows join Linux, sharing one
+    CMakeLists.txt and one plug-in source tree. macOS also gains an Audio
+    Unit build (needed for Logic Pro/GarageBand, which don't support VST3).
+  - Bumped NeuralAmpModelerCore: fixed layer1x1_post_film being silently
+    dropped under NONE/GATED gating, added a hand-unrolled Channels==9
+    fast-path kernel, removed LoRA support (schema_version 2 models are now
+    refused loudly instead of silently mis-parsed), and slowed the knob-
+    smoothing time constant to reduce a DC-blocker transient on knob moves.
+  - Replaced the muffinator_v4_optimal.param.nam demo download with 7
+    models (large-muffin, british-800-preamp, cali-duo-reverb-85watt,
+    dirty-hamster, clone-overdrive, special-bundle-overdrive-183-rock-
+    channel, vinny-iii-drive) for more variety trying the parametric knobs.
+
 07/20/2026 - v0.5.0
   - Parametric models: a model's own knobs and switches appear inline in the
     plug-in, driven by mrgeneko/NeuralAmpModelerCore's parametric (FiLM
