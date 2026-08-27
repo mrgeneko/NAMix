@@ -345,7 +345,7 @@ void NAMixAudioProcessorEditor::paint(juce::Graphics &g) {
   // Title — Michroma-Regular 30px, white, centred in contentArea.GetFromTop(50)
   g.setColour(juce::Colour(0xfff2f2f2));
   g.setFont(mMichromaFont.withHeight(30.0f));
-  g.drawText("Anti-Static NAMix", juce::Rectangle<int>(Layout::CL, Layout::CT, Layout::CW, 50),
+  g.drawText("Anti-Static NAM", juce::Rectangle<int>(Layout::CL, Layout::CT, Layout::CW, 50),
              juce::Justification::centred);
 
   // Gear icon — drawn in the settingsButtonArea corner (centred in 22×22)

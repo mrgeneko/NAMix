@@ -3,6 +3,12 @@ https://github.com/mrgeneko/NAMix
 
 Newest first.
 
+08/27/2026 - v0.6.3
+  - Fixed the plug-in's on-screen title, which still read "Anti-Static
+    NAMix" (stale from before the product was renamed to "Anti-Static
+    NAM") -- now matches the actual product name shown in the host's
+    title bar.
+
 08/27/2026 - v0.6.2
   - macOS release builds are now signed with a Developer ID Application
     certificate, hardened runtime enabled, and notarized/stapled by Apple
