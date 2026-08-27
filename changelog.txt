@@ -3,6 +3,15 @@ https://github.com/mrgeneko/NAMix
 
 Newest first.
 
+08/27/2026 - v0.6.2
+  - macOS release builds are now signed with a Developer ID Application
+    certificate, hardened runtime enabled, and notarized/stapled by Apple
+    (scripts/sign-notarize-macos.sh, run in CI before packaging). No more
+    Gatekeeper "unidentified developer" warning on first launch. Verified
+    signing locally against the real identity; notarization/stapling
+    itself only runs in CI, where the App Store Connect API credentials
+    live.
+
 08/27/2026 - v0.6.1
   - Fixed macOS "Anti-Static NAM is damaged and can't be opened" error on
     first launch of a freshly downloaded release. The Standalone .app never

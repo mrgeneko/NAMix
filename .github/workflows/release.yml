@@ -155,6 +155,42 @@ jobs:
       - name: Run unit tests
         run: ctest --test-dir build --output-on-failure
 
+      # Imports the Developer ID Application certificate into a CI-local keychain rather
+      # than the runner's default login keychain, which is torn down with the VM anyway --
+      # this just keeps codesign from needing to unlock/search anything unexpected.
+      - name: Import Developer ID certificate
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PWD="$(openssl rand -base64 24)"
+          echo "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security create-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+          security import "$RUNNER_TEMP/certificate.p12" -P "$MACOS_CERTIFICATE_PWD" \
+            -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          # Lets codesign use the imported key non-interactively (no keychain-unlock
+          # prompt), which would otherwise hang a headless CI run indefinitely.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s \
+            -k "$KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH" \
+            $(security list-keychains -d user | sed 's/"//g')
+          rm -f "$RUNNER_TEMP/certificate.p12"
+
+      - name: Sign and notarize
+        env:
+          SIGN_IDENTITY: "Developer ID Application: Gene Ko (QD3S486P93)"
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+          NOTARY_API_KEY: ${{ secrets.NOTARY_API_KEY }}
+        run: |
+          echo "$NOTARY_API_KEY" | base64 --decode > "$RUNNER_TEMP/notary_key.p8"
+          export NOTARY_API_KEY_PATH="$RUNNER_TEMP/notary_key.p8"
+          bash scripts/sign-notarize-macos.sh
+          rm -f "$RUNNER_TEMP/notary_key.p8"
+
       - name: Package release archive
         run: bash scripts/makedist-macos.sh
 

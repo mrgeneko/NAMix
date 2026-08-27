@@ -19,21 +19,31 @@ ARTEFACTS="$REPO/build/NAMix_artefacts/Release"
 
 # VST3 and AU bundles -- JUCE's post-build step already ad-hoc-signs each of these (see
 # the "Replacing invalid signature with ad-hoc signature" line in a normal build log).
-# The Standalone .app does NOT get that treatment: the linker only applies its automatic
-# ad-hoc signature to the raw executable, not a proper bundle-level signature with sealed
-# resources, which codesign's --deep verification (and Gatekeeper, once quarantined by a
-# browser download) rejects as an invalid signature -- "code has no resources but
+# ditto, not cp -r, to preserve extended attributes/resource forks -- notably any
+# notarization ticket scripts/sign-notarize-macos.sh already stapled onto these bundles
+# before this script ran (CI release builds), which a plain cp -r risks dropping.
+ditto "$ARTEFACTS/VST3/Anti-Static NAM.vst3" "$PKGDIR/Anti-Static NAM.vst3"
+ditto "$ARTEFACTS/AU/Anti-Static NAM.component" "$PKGDIR/Anti-Static NAM.component"
+ditto "$ARTEFACTS/Standalone/Anti-Static NAM.app" "$PKGDIR/Anti-Static NAM.app"
+
+# The Standalone .app needs a real bundle-level signature: the linker only applies its
+# automatic ad-hoc signature to the raw executable, not a proper bundle-level signature
+# with sealed resources, which codesign's --deep verification (and Gatekeeper, once
+# quarantined by a browser download) rejects as invalid -- "code has no resources but
 # signature indicates they must be present" -- rather than merely untrusted. That reads to
 # the user as "app is damaged, move to Trash" instead of the expected, dismissable
-# "unidentified developer" prompt. Explicitly re-signing the whole bundle here fixes it.
-# This is still NOT notarized: Gatekeeper will still warn on first launch with the
-# expected "unidentified developer" prompt, same disclosed tradeoff the Anti-Static
-# (iPlug2) Windows build documents for its own unsigned .exe -- see README's "Before you
-# install".
-cp -r "$ARTEFACTS/VST3/Anti-Static NAM.vst3" "$PKGDIR/"
-cp -r "$ARTEFACTS/AU/Anti-Static NAM.component" "$PKGDIR/"
-cp -r "$ARTEFACTS/Standalone/Anti-Static NAM.app" "$PKGDIR/"
-codesign --force --deep --sign - "$PKGDIR/Anti-Static NAM.app"
+# "unidentified developer" prompt.
+#
+# If scripts/sign-notarize-macos.sh already properly signed+notarized+stapled this bundle
+# (real CI release builds, see release.yml), it already has a valid Authority chain here
+# -- re-signing it now would strip the stapled ticket (stapling is tied to the exact
+# signed hash). Only fall back to an ad-hoc fix if that didn't happen (local dev builds
+# without Developer ID credentials configured).
+if codesign -dvv "$PKGDIR/Anti-Static NAM.app" 2>&1 | grep -q "^Authority="; then
+  echo "Anti-Static NAM.app already has a real Developer ID signature -- not re-signing."
+else
+  codesign --force --deep --sign - "$PKGDIR/Anti-Static NAM.app"
+fi
 
 cp "$REPO/NOTICE" "$PKGDIR/"
 cp "$REPO/LICENSE" "$PKGDIR/" 2>/dev/null || cp "$REPO/LICENCE" "$PKGDIR/" 2>/dev/null || true

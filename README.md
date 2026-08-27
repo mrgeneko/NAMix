@@ -41,8 +41,8 @@ NAMix ships these binaries (macOS gets all three; Linux and Windows get the firs
 
 ## System requirements
 
-**macOS**: Apple Silicon or Intel. Release builds are ad-hoc signed, not notarized --
-see "Before you install" in each release's notes for the one-time Gatekeeper workaround.
+**macOS**: Apple Silicon or Intel. Release builds are signed with a Developer ID
+certificate and notarized by Apple, so they launch without a Gatekeeper warning.
 No specific minimum OS version is pinned in the build yet (CI builds against whatever
 SDK/deployment target the runner's Xcode defaults to); if you hit a "too old" load error
 on an older macOS, please open an issue.
@@ -133,10 +133,8 @@ The Audio Unit is required for Logic Pro/GarageBand, which don't support VST3 at
 all; other DAWs (Ableton Live, Reaper, Bitwig, …) can use either. Rescan plug-ins
 in your DAW afterward.
 
-Since these builds are ad-hoc signed rather than notarized, the first launch of
-either the standalone app or a DAW scanning the plugin will trigger a Gatekeeper
-warning ("cannot be opened because the developer cannot be verified"). Right-click
-(Control-click) it, choose **Open**, and confirm — needed only once per binary.
+These builds are signed with a Developer ID certificate and notarized by Apple, so
+they launch normally with no Gatekeeper warning.
 
 **Standalone application**:
 

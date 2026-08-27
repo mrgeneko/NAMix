@@ -9,7 +9,7 @@
 
 **Linux**: requires **glibc 2.35 or later** (Ubuntu 22.04+, Debian 12+, Fedora 36+, and most current rolling-release distros). Ubuntu 20.04, Debian 11, RHEL/CentOS 9, and openSUSE Leap 15.x ship an older glibc and can't load these binaries -- build from source instead (see the README).
 
-**macOS**: builds are ad-hoc signed, not notarized -- Gatekeeper will warn ("cannot be opened because the developer cannot be verified") the first time you launch the standalone app or scan the plug-in. Right-click (or Control-click) it, choose **Open**, then confirm -- only needed once.
+**macOS**: builds are signed with a Developer ID certificate and notarized by Apple -- no Gatekeeper warning on first launch.
 
 **Windows**: builds are not code-signed -- the standalone `.exe` will raise a SmartScreen warning the first time you run it. Choose **More info**, then **Run anyway**.
 
