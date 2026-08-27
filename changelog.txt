@@ -3,6 +3,20 @@ https://github.com/mrgeneko/NAMix
 
 Newest first.
 
+08/27/2026 - v0.6.1
+  - Fixed macOS "Anti-Static NAM is damaged and can't be opened" error on
+    first launch of a freshly downloaded release. The Standalone .app never
+    received a real bundle-level code signature (only the linker's
+    automatic ad-hoc stub on the raw executable, no sealed resources) --
+    Gatekeeper rejects that outright as invalid once quarantined by a
+    browser download, rather than showing the expected, dismissable
+    "unidentified developer" prompt. makedist-macos.sh now explicitly
+    codesigns the .app bundle before packaging, and packages with `ditto`
+    instead of `zip` (which is documented to corrupt signed-bundle
+    metadata). Verified locally: quarantined the packaged .app the same way
+    a browser download does, confirmed `codesign --deep` reports valid and
+    the app actually launches.
+
 08/27/2026 - v0.6.0
   - Cross-platform build: macOS and Windows join Linux, sharing one
     CMakeLists.txt and one plug-in source tree. macOS also gains an Audio

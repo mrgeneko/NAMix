@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)  # $<LINK_LIBRARY:WHOLE_ARCHIVE,...> needs 3.24+
 
-project(namix VERSION 0.6.0 LANGUAGES CXX C)
+project(namix VERSION 0.6.1 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

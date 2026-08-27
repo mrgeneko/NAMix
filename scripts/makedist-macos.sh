@@ -17,21 +17,33 @@ mkdir -p "$PKGDIR"
 
 ARTEFACTS="$REPO/build/NAMix_artefacts/Release"
 
-# VST3 and AU bundles, Standalone .app -- JUCE's post-build step already ad-hoc-signs
-# each of these (see the "Replacing invalid signature with ad-hoc signature" line in a
-# normal build log), so no separate signing step here. This is NOT notarized: Gatekeeper
-# will still warn on first launch, same disclosed tradeoff the Anti-Static (iPlug2)
-# Windows build documents for its own unsigned .exe -- see README's "Before you install".
+# VST3 and AU bundles -- JUCE's post-build step already ad-hoc-signs each of these (see
+# the "Replacing invalid signature with ad-hoc signature" line in a normal build log).
+# The Standalone .app does NOT get that treatment: the linker only applies its automatic
+# ad-hoc signature to the raw executable, not a proper bundle-level signature with sealed
+# resources, which codesign's --deep verification (and Gatekeeper, once quarantined by a
+# browser download) rejects as an invalid signature -- "code has no resources but
+# signature indicates they must be present" -- rather than merely untrusted. That reads to
+# the user as "app is damaged, move to Trash" instead of the expected, dismissable
+# "unidentified developer" prompt. Explicitly re-signing the whole bundle here fixes it.
+# This is still NOT notarized: Gatekeeper will still warn on first launch with the
+# expected "unidentified developer" prompt, same disclosed tradeoff the Anti-Static
+# (iPlug2) Windows build documents for its own unsigned .exe -- see README's "Before you
+# install".
 cp -r "$ARTEFACTS/VST3/Anti-Static NAM.vst3" "$PKGDIR/"
 cp -r "$ARTEFACTS/AU/Anti-Static NAM.component" "$PKGDIR/"
 cp -r "$ARTEFACTS/Standalone/Anti-Static NAM.app" "$PKGDIR/"
+codesign --force --deep --sign - "$PKGDIR/Anti-Static NAM.app"
 
 cp "$REPO/NOTICE" "$PKGDIR/"
 cp "$REPO/LICENSE" "$PKGDIR/" 2>/dev/null || cp "$REPO/LICENCE" "$PKGDIR/" 2>/dev/null || true
 
 mkdir -p "$REPO/dist"
 ZIP="$REPO/dist/NAMix-${VERSION}-macos-${ARCH}.zip"
-(cd "$STAGEDIR" && zip -r -y "$ZIP" "NAMix-${VERSION}" > /dev/null)
+# ditto, not zip: the plain `zip` CLI is documented to mangle extended attributes/resource
+# forks on signed bundles, which can itself invalidate a previously-valid signature on
+# unzip. ditto is Apple's own tool for this and is what Xcode/notarization workflows use.
+(cd "$STAGEDIR" && ditto -c -k --sequesterRsrc --keepParent "NAMix-${VERSION}" "$ZIP")
 rm -rf "$STAGEDIR"
 
 echo "Packaged: $ZIP"
