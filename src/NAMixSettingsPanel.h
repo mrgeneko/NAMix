@@ -229,6 +229,10 @@ public:
     g.drawText("Parametric Model Support By Gene Ko",
                juce::Rectangle<int>(20, 282 + 3 * lh, 280, lh),
                juce::Justification::centredLeft);
+    g.setColour(juce::Colours::white.withAlpha(0.55f));
+    g.drawText("github.com/mrgeneko/NAMix",
+               juce::Rectangle<int>(20, 282 + 4 * lh, 280, lh),
+               juce::Justification::centredLeft);
 
     // Right half — about (mirrors AboutControl, 5 lines x 15px)
     g.setFont(mRobotoFont.withHeight(14.0f));
