@@ -72,7 +72,7 @@ jobs:
       # installs a model, so without these a user has no way to exercise that
       # feature on a fresh install. muffinator_v4_optimal.param.nam stays in
       # ParametricModels/ for StateRestoreTests.cpp but is no longer shipped
-      # as a release download -- these 8 replace it.
+      # as a release download -- these 9 replace it.
       - name: Upload demo parametric models
         env:
           GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
@@ -86,6 +86,7 @@ jobs:
             ParametricModels/special-bundle-overdrive-183-rock-channel.nam \
             ParametricModels/vinny-iii-drive.nam \
             ParametricModels/brit-in-a-box.nam \
+            ParametricModels/special-bundle-overdrive-183-jazz-channel.nam \
             --repo "${{github.repository}}" \
             --clobber
         shell: bash
