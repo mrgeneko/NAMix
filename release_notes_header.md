@@ -3,7 +3,7 @@
 - **Linux (x86_64)** — `NAMix-__VERSION__-linux-x86_64.tar.gz`, containing the VST3 plug-in and the standalone app
 - **macOS (arm64/x86_64)** — `NAMix-__VERSION__-macos-<arch>.zip`, containing the VST3 plug-in, Audio Unit, and the standalone app
 - **Windows (x86_64)** — `NAMix-__VERSION__-windows-x86_64.zip`, containing the VST3 plug-in and the standalone app
-- **Demo models** — `large-muffin.nam`, `british-800-preamp.nam`, `cali-duo-reverb-85watt.nam`, `dirty-hamster.nam`, `clone-overdrive.nam`, `special-bundle-overdrive-183-rock-channel.nam`, `vinny-iii-drive.nam`, `brit-in-a-box.nam`, `special-bundle-overdrive-183-jazz-channel.nam`, `anxiety-drive.nam`, `green-mids-overdrive.nam`, for trying the parametric knobs (no model is bundled)
+- **Demo models** — `large-muffin.nam`, `british-800-preamp.nam`, `cali-duo-reverb-85watt.nam`, `dirty-hamster.nam`, `clone-overdrive.nam`, `special-bundle-overdrive-183-rock-channel.nam`, `vinny-iii-drive.nam`, `brit-in-a-box.nam`, `special-bundle-overdrive-183-jazz-channel.nam`, `anxiety-drive.nam`, `green-mids-overdrive.nam`, `american-blonde.nam`, for trying the parametric knobs (no model is bundled)
 
 ## Before you install
 
