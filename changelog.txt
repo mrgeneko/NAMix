@@ -3,10 +3,16 @@ https://github.com/mrgeneko/NAMix
 
 Newest first.
 
+08/31/2026 - v0.6.5
+  - Added american-blonde (Chainsmith bundled tone, EQ-only diagnostic
+    retrain -- Drive/Level/Voice frozen, only Bass/Mids/Treble respond)
+    to the demo parametric models.
+
 08/30/2026 - v0.6.4
-  - Added anxiety-drive, special-bundle-overdrive-183-jazz-channel, and an
-    updated cali-duo-reverb-85watt (w4/5/8/9 composite) to the demo
-    parametric models, for more variety trying the parametric knobs.
+  - Added anxiety-drive, special-bundle-overdrive-183-jazz-channel,
+    green-mids-overdrive, and an updated cali-duo-reverb-85watt (w4/5/8/9
+    composite) to the demo parametric models, for more variety trying the
+    parametric knobs.
 
 08/27/2026 - v0.6.3
   - Fixed the plug-in's on-screen title, which still read "Anti-Static
