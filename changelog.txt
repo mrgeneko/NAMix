@@ -3,6 +3,14 @@ https://github.com/mrgeneko/NAMix
 
 Newest first.
 
+08/31/2026 - v0.6.6
+  - Fixed special-bundle-overdrive-183-jazz-channel.nam: it was trained on
+    a different circuit entirely (a different device's schx, 4 knobs)
+    rather than a genuine Jazz-voicing config of the same amp as the Rock
+    channel (2 knobs, Volume/Master Volume, same permutation grid).
+    Replaced with the correct matched-pair export from the real amp's own
+    Jazz switch position.
+
 08/31/2026 - v0.6.5
   - Added american-blonde (Chainsmith bundled tone, EQ-only diagnostic
     retrain -- Drive/Level/Voice frozen, only Bass/Mids/Treble respond)
