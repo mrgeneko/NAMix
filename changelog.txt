@@ -3,6 +3,16 @@ https://github.com/mrgeneko/NAMix
 
 Newest first.
 
+09/03/2026 - v0.6.7
+  - Added american-blonde-v2 (Joyo American Sound, parametric-nam-models
+    2026-09-01_5c9d59c run -- full-tier ESR 0.0091, lite-tier 0.0262, all
+    knobs live) to the demo parametric models, alongside the original
+    static american-blonde (EQ-only, Drive fixed) rather than replacing
+    it -- existing presets/exports referencing the old file are unaffected.
+  - Added lol-250-overdrive (DOD 250 Overdrive, parametric-nam-models
+    2026-09-03_a0b3813 run -- full-tier ESR 0.0054, lite-tier 0.0113) to
+    the demo parametric models.
+
 08/31/2026 - v0.6.6
   - Fixed special-bundle-overdrive-183-jazz-channel.nam: it was trained on
     a different circuit entirely (a different device's schx, 4 knobs)
